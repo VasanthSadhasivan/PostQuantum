@@ -56,8 +56,8 @@ def decrypt(c, s_key, q):
 
 	m = numpy.inner(a, s_key)*(-1)/q + b
 	m = m.tolist()
-
-	m = [x*2 for x in m] 
+	m = [x % q for x in m]
+	m = [x * 2 for x in m] 
 	
 	return [0 if x < 1 else 1 for x in m]
 
