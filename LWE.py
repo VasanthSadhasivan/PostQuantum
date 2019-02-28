@@ -50,7 +50,14 @@ def encrypt(m):
 Parameters: Cipher Text, secret/private key, prime
 Return: Original message vector m
 '''
-#Anthony
 def decrypt(c, s_key, q):
-	pass
+	a = c[0]
+	b = c[1]
+
+	m = numpy.inner(a, s_key)*(-1)/q + b
+	m = m.tolist()
+
+	m = [x*2 for x in m] 
+	
+	return [0 if x < 1 else 1 for x in m]
 
