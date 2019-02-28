@@ -1,24 +1,19 @@
-# Unfiform Random Number Generator
-# Gaussian Random Number Generator
-# Private Key Generator
-# Public Key Generator
-# Encryption
-# Decryption
+import numpy
 
 '''
-Parameters: lower and upper bounds
+Parameters: lower and upper bounds, size
 Return: sample value from distribution
 '''
 #Vasanth
-def u_rng(a, b):
-	pass
+def u_rng(a, b, n):
+	return numpy.random.uniform(a, b, n).tolist();
 
 '''
-Parameters: lower and upper bounds
+Parameters: lower and upper bounds, size
 Return: sample value from distribution
 '''
 #Lahiru
-def g_rng(a, b):
+def g_rng(a, b, n):
 	pass
 
 '''
