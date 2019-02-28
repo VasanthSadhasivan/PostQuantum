@@ -6,7 +6,8 @@ Return: sample value from distribution
 '''
 #Vasanth
 def u_rng(a, b, n):
-	return numpy.random.uniform(a, b, n).tolist();
+	list =  numpy.random.uniform(a, b, n).tolist()
+	return [x for x in list]
 
 '''
 Parameters: lower and upper bounds, size
@@ -30,7 +31,12 @@ Return: vector representing our public key in z mod q
 '''
 #Vasanth
 def public_key_gen(n, q, s_key):
-	pass
+	A = numpy.array(u_rng(0, q, n)); 
+	E = numpy.array(g_rng(0, q, n));
+	
+	pub_key = numpy.inner(A, numpy.array(s_key)) / q + E
+
+	return pub_key.tolist()
 
 '''
 Parameters: Vector representing our message to encrypt
