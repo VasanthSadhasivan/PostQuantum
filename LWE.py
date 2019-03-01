@@ -15,7 +15,8 @@ Return: sample value from distribution
 '''
 #Lahiru
 def g_rng(a, b, n):
-	pass
+	mean = b-a
+	return numpy.random.normal(mean,3,None)
 
 '''
 Parameters: Number of elements in our vector, a n^2 < prime < 2n^2 
@@ -44,7 +45,9 @@ Return: Vector of two vectors containing cipher text
 '''
 #Lahiru
 def encrypt(m):
-	pass
+	for x in range(m.size()):
+		S[1][x] = (m[x]/2) + (S[1][x])
+	return S
 
 '''
 Parameters: Cipher Text, secret/private key, prime
