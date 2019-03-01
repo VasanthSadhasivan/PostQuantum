@@ -23,16 +23,22 @@ Return: vector representing our private key in z mod q
 '''
 #Anthony
 def private_key_gen(n, q):
-	pass
+	S = numpy.array(u_rng(0, q - 1, n))
+	
+	return S
 
 '''
 Parameters: Number of Elements, prime, secret/private key
 Return: vector representing our public key in z mod q
 '''
 #Vasanth
-def public_key_gen(n, q, s_key):
-	A = numpy.array(u_rng(0, q, n)); 
-	E = numpy.array(g_rng(0, q, n));
+def public_key_gen(n, m, q, s_key):
+	A = numpy.empty([m, n], dtype=int)
+
+	for i in range(m):
+		A[i] = numpy.array(u_rng(0, q - 1, n))
+
+	E = numpy.array(g_rng(0, q - 1, n))
 	
 	pub_key = numpy.inner(A, numpy.array(s_key)) / q + E
 
