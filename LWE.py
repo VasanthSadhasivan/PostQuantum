@@ -14,7 +14,8 @@ Return: sample value from distribution
 '''
 #Lahiru
 def g_rng(a, b, n):
-	return numpy.random.normal(a, b, n).tolist()
+	mean = (a - b)/2
+	return numpy.random.normal(mean, 1, n).tolist()
 
 '''
 Parameters: Number of elements in our vector, a n^2 < prime < 2n^2 
@@ -36,8 +37,7 @@ def public_key_gen(n, m, q, s_key):
 	for i in range(m):
 		A[i] = numpy.array(u_rng(0, q - 1, n))
 
-	E = numpy.array(g_rng(0, 2, m))
-	
+	E = numpy.array(u_rng(0, 2, m))
 	pub_key = []
 
 	for i in range(m):
@@ -68,7 +68,6 @@ Return: Original message vector m
 def decrypt(c, s_key, q):
 	a = c[0]
 	b = c[1]
-	print(c, s_key, q)
 	m = numpy.inner(a, s_key)*(-1)/q + b
 	return m % 2 
 
