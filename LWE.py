@@ -6,8 +6,7 @@ Return: sample value from distribution
 '''
 #Vasanth
 def u_rng(a, b, n):
-	list =  numpy.random.uniform(a, b, n).tolist()
-	return [x for x in list]
+	return  numpy.random.uniform(a, b, n).tolist()
 
 '''
 Parameters: lower and upper bounds, size
@@ -15,8 +14,7 @@ Return: sample value from distribution
 '''
 #Lahiru
 def g_rng(a, b, n):
-	mean = b-a
-	return numpy.random.normal(mean,3,None)
+	return numpy.random.normal(a, b, n).tolist()
 
 '''
 Parameters: Number of elements in our vector, a n^2 < prime < 2n^2 
@@ -24,9 +22,8 @@ Return: vector representing our private key in z mod q
 '''
 #Anthony
 def private_key_gen(n, q):
-	S = numpy.array(u_rng(0, q - 1, n))
-	
-	return S
+	S = numpy.array(u_rng(0, q - 1, n))	
+	return S.tolist()
 
 '''
 Parameters: Number of Elements, prime, secret/private key
@@ -39,21 +36,23 @@ def public_key_gen(n, m, q, s_key):
 	for i in range(m):
 		A[i] = numpy.array(u_rng(0, q - 1, n))
 
-	E = numpy.array(g_rng(0, q - 1, n))
+	E = numpy.array(g_rng(0, 2, m))
 	
-	pub_key = numpy.inner(A, numpy.array(s_key)) / q + E
+	pub_key = []
 
-	return pub_key.tolist()
+	for i in range(m):
+		pub_key.append(numpy.inner(A[i], numpy.array(s_key)) / q + int(E[i]))
+	return [A.tolist(), pub_key]
 
 '''
-Parameters: Vector representing our message to encrypt
+Parameters: Message Bit
 Return: Vector of two vectors containing cipher text
 '''
 #Lahiru
-def encrypt(m):
-	for x in range(m.size()):
-		S[1][x] = (m[x]/2) + (S[1][x])
-	return S
+def encrypt(m, pub_key):
+	i = int(u_rng(0, len(pub_key), 1)[0])
+	result = [pub_key[0][i], pub_key[1][i] + m/2]
+	return result
 
 '''
 Parameters: Cipher Text, secret/private key, prime
@@ -64,9 +63,23 @@ def decrypt(c, s_key, q):
 	b = c[1]
 
 	m = numpy.inner(a, s_key)*(-1)/q + b
-	m = m.tolist()
-	m = [x % q for x in m]
-	m = [x * 2 for x in m] 
-	
-	return [0 if x < 1 else 1 for x in m]
+	print(a)
+	return m
 
+def main():
+	n = 3
+	m = 3
+	q = 11
+
+	s_key = private_key_gen(n, q)
+	pub_key = public_key_gen(n, m, q, s_key)
+	
+	while True:
+		input = int(raw_input("Input Bit: "))
+
+		c = encrypt(input, pub_key) 
+		m = decrypt(c, s_key, q)
+		print("Output Bit: " + str(m))
+
+if __name__ == "__main__":
+	main()
