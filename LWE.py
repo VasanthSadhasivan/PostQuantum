@@ -50,9 +50,16 @@ Return: Vector of two vectors containing cipher text
 '''
 #Lahiru
 def encrypt(m, pub_key):
-	i = int(u_rng(0, len(pub_key), 1)[0])
-	result = [pub_key[0][i], pub_key[1][i] + m/2]
-	return result
+	i = len(pub_key)
+	a = pub_key[0]
+	b = pub_key[1]
+	res = [numpy.array(a[0]), numpy.array(b[0])]
+
+	for j in range(i - 1):
+		res[0] += numpy.array(a[j + 1])
+		res[1] += b[j + 1]
+	res[1] += m / 2.0
+	return res
 
 '''
 Parameters: Cipher Text, secret/private key, prime
@@ -61,10 +68,9 @@ Return: Original message vector m
 def decrypt(c, s_key, q):
 	a = c[0]
 	b = c[1]
-
+	print(c, s_key, q)
 	m = numpy.inner(a, s_key)*(-1)/q + b
-	print(a)
-	return m
+	return m % 2 
 
 def main():
 	n = 3
