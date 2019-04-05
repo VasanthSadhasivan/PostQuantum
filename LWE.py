@@ -41,7 +41,7 @@ def public_key_gen(n, m, q, s_key):
 	pub_key = []
 
 	for i in range(m):
-		pub_key.append(numpy.inner(A[i], numpy.array(s_key)) / q + int(E[i]))
+		pub_key.append(int(round(numpy.inner(A[i], numpy.array(s_key)) / q)) + int(E[i]))
 	return [A.tolist(), pub_key]
 
 '''
@@ -58,7 +58,7 @@ def encrypt(m, pub_key):
 	for j in range(i - 1):
 		res[0] += numpy.array(a[j + 1])
 		res[1] += b[j + 1]
-	res[1] += m / 2.0
+	res[1] += int(round(m / 2.0))
 	return res
 
 '''
@@ -68,7 +68,7 @@ Return: Original message vector m
 def decrypt(c, s_key, q):
 	a = c[0]
 	b = c[1]
-	m = numpy.inner(a, s_key)*(-1)/q + b
+	m = int(round(numpy.inner(a, s_key)*(-1)/q + b))
 	return m % 2 
 
 def main():
