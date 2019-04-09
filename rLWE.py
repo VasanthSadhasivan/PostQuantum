@@ -18,17 +18,17 @@ Parameters: lower and upper bounds, size
 Return: sample value from distribution
 '''
 #Lahiru
-def g_rng(a, b, n):
-	mean = (a - b)/2
-	return numpy.random.normal(mean, 1, n).tolist()
+def g_rng():
+        global n, std_dev
+	return [0] + numpy.random.normal(0, std_dev, n-1).tolist()
 
 '''
 Parameters: Number of Elements, prime, secret/private key
 Return: vector representing our public key in z mod q
 '''
 def key_gen(n, a, q):
-	r1 = g_rng(0, q, n)
-	r2 = g_rng(0, q, n)
+	r1 = g_rng()
+	r2 = g_rng()
 	r1_ntt = numpy.fft.fft(r1)
 	r2_ntt = numpy.fft.fft(r2)
 	p1_ntt = r1_ntt - numpy.convolve(a, r2)
@@ -41,9 +41,9 @@ Return: Vector of two vectors containing cipher text
 '''
 #Lahiru
 def encrypt(m, a_ntt, p_ntt):
-	e1 = g_rng(0, q, n)
-	e2 = g_rng(0, q, n)
-	e3 = g_rng(0, q, n)
+	e1 = g_rng()
+	e2 = g_rng()
+	e3 = g_rng()
 	e1_ntt = numpy.fft.fft(e1)
 	e2_ntt = numpy.fft.fft(e2)
 	
