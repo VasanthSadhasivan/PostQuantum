@@ -1,76 +1,90 @@
-import numpy
-import math
+import numpy as np
+import re
 
-n = 256
-q = 7681
-std_dev = 11.31/math.sqrt(2*math.pi)
+ # n : the largest degree in the polynomial defined in the paper as R sub q
+n = 64 
 
-'''
-Parameters: lower and upper bounds, size
-Return: sample value from distribution
-'''
-#Vasanth
-def u_rng(a, b, n):
-	return  numpy.random.uniform(a, b, n).tolist()
+ # q : a sample prime that satisfies q = 1 mod(n)
+q = 257
 
-'''
-Parameters: lower and upper bounds, size
-Return: sample value from distribution
-'''
-#Lahiru
-def g_rng():
-        global n, std_dev
-	return [0] + numpy.random.normal(0, std_dev, n-1).tolist()
+ # f : the irreducible polynomial we mod to produce ring R
+f  = np.poly1d([1] + [0] * (n - 1) + [1])
 
-'''
-Parameters: Number of Elements, prime, secret/private key
-Return: vector representing our public key in z mod q
-'''
-def key_gen(n, a, q):
-	r1 = g_rng()
-	r2 = g_rng()
-	r1_ntt = numpy.fft.fft(r1)
-	r2_ntt = numpy.fft.fft(r2)
-	p1_ntt = r1_ntt - numpy.convolve(a, r2)
-	return r2_ntt, (a, p1_ntt)
+ # g/a : the global polynomial that exists in ring R
+g  = np.poly1d(np.fmod(np.random.normal(scale = 10, size = 2).astype(int) , q))
 
+ # Asks for user input in the form of an integer. Created to test functionality
+def sample_program():
+	public_key, private_key = key_gen()
 
-'''
-Parameters: Message Bit
-Return: Vector of two vectors containing cipher text
-'''
-#Lahiru
-def encrypt(m, a_ntt, p_ntt):
-	e1 = g_rng()
-	e2 = g_rng()
-	e3 = g_rng()
-	e1_ntt = numpy.fft.fft(e1)
-	e2_ntt = numpy.fft.fft(e2)
-	
-	return numpy.convolve(a_ntt, e1_ntt) + e2_ntt, numpy.convolve(p_ntt, e1_ntt) + numpy.fft.fft(e3 + m) 
-	
-	
-'''
-Parameters: Cipher Text, secret/private key, prime
-Return: Original message vector m
-'''
-def decrypt(c1_ntt, c2_ntt, r2_ntt):
-	return numpy.fft.ifft(numpy.convolve(c1_ntt,r2_ntt) + c2_ntt)
-	
+ 	m = int(input("Integer to encrypt: "))
+
+ 	encrypted_message = encrypt(m, public_key)
+
+ 	decrypted_message = decrypt(encrypted_message, private_key)
+
+ 	pretty_print(m, encrypted_message, decrypted_message) 
+
+ # Generate key based on math described in paper
+def key_gen():
+	global n, f, q, g
+
+ 	r1 = np.poly1d(np.fmod(np.random.normal(scale = 10, size = n - 1).astype(int) , 2))
+	r2 = np.poly1d(np.fmod(np.random.normal(scale = 10, size = n - 1).astype(int) , 2))
+
+ 	f  = np.poly1d([1] + [0] * (n - 1) + [1]) 
+
+ 	p = np.poly1d(np.fmod(np.polydiv(np.poly1d(np.fmod(r1 - g * r2, q)) , f) [1], q))
+	sk = r2
+
+ 	return [p,sk] #[public_key, private_key]
+
+ # Encrypt given message using public key as described in paper
+def encrypt(m, public_key):
+	global n, f, q, g
+
+ 	p = public_key
+
+ 	m = [int(i) for i in list('{0:032b}'.format(m))]
+	m_masked = np.poly1d([(q-1)/2 if i == 1 else 0 for i in m])
+
+ 	e1 = np.fmod(np.poly1d(np.random.normal(scale = 10, size = n - 1).astype(int)) , 2)
+	e2 = np.fmod(np.poly1d(np.random.normal(scale = 10, size = n - 1).astype(int)) , 2)
+	e3 = np.fmod(np.poly1d(np.random.normal(scale = 10, size = n - 1).astype(int)) , 2)
+
+ 	c1 = np.fmod(np.array(np.polydiv(g  * e1 + e2, f) [1]) , q)
+	c2 = np.fmod(np.array(np.polydiv(p * e1 + e3 + m_masked, f) [1]) , q)
+	c1 = np.poly1d(c1)
+	c2 = np.poly1d(c2)
+
+ 	return [c1, c2] #encrypted message
+
+ # Decrypt encrypted message using private key as described in paper
+def decrypt(encrypted_message, private_key):
+	global n, f, q, g
+
+ 	c1 = encrypted_message[0]
+	c2 = encrypted_message[1]
+
+ 	x = np.fmod(np.array(np.polydiv(c1 * private_key + c2, f) [1]) , q)
+	x = np.poly1d(x)
+	decrypted = [1 if abs(int(i)) > q//4 else 0 for i in np.array(x)]
+	return decrypted
+
+ # Print the input message, encrypted and decrypted data
+def pretty_print(m, encrypted_message, decrypted_message):
+        decrypted_data = int("".join(map(str, decrypted_message)), 2)
+        encrypted_data = ":".join([str(int(i)) for i in np.array(encrypted_message[0])]) + ",\n" +  ":".join([str(int(i)) for i in np.array(encrypted_message[1])])
+        message_data = m 
+
+         print("[+] Message Data:\t ", message_data)
+        print("[+] Encrypted Data:\t ", encrypted_data)
+        print("[+] Decrypted Data:\t ", decrypted_data)
+
+ # Run the sample program over again
 def main():
-	n = 3
-	m = 3
-	q = 11
-
-	s_key = private_key_gen(n, q)
-	pub_key = public_key_gen(n, m, q, s_key)
-	
 	while True:
-		input = int(raw_input("Input Bit: "))
+		sample_program()
 
-		c = encrypt(input, pub_key) 
-		m = decrypt(c, s_key, q)
-		print("Output Bit: " + str(m))
-
-if __name__ == "__main__":
+ if __name__ == "__main__":
 	main()
