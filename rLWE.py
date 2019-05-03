@@ -19,7 +19,7 @@ def sample_program():
 
  	m = int(input("Integer to encrypt: "))
 
- 	encrypted_message = encrypt(m, public_key)
+	encrypted_message = encrypt(m, public_key)
 
  	decrypted_message = decrypt(encrypted_message, private_key)
 
@@ -51,7 +51,8 @@ def encrypt(m, public_key):
  	e1 = np.fmod(np.poly1d(np.random.normal(scale = 10, size = n - 1).astype(int)) , 2)
 	e2 = np.fmod(np.poly1d(np.random.normal(scale = 10, size = n - 1).astype(int)) , 2)
 	e3 = np.fmod(np.poly1d(np.random.normal(scale = 10, size = n - 1).astype(int)) , 2)
-
+	print(np.fft.fft(e1))
+	print(np.fft.fft(g))
  	c1 = np.fmod(np.array(np.polydiv(g  * e1 + e2, f) [1]) , q)
 	c2 = np.fmod(np.array(np.polydiv(p * e1 + e3 + m_masked, f) [1]) , q)
 	c1 = np.poly1d(c1)
@@ -77,7 +78,7 @@ def pretty_print(m, encrypted_message, decrypted_message):
         encrypted_data = ":".join([str(int(i)) for i in np.array(encrypted_message[0])]) + ",\n" +  ":".join([str(int(i)) for i in np.array(encrypted_message[1])])
         message_data = m 
 
-         print("[+] Message Data:\t ", message_data)
+        print("[+] Message Data:\t ", message_data)
         print("[+] Encrypted Data:\t ", encrypted_data)
         print("[+] Decrypted Data:\t ", decrypted_data)
 
@@ -86,5 +87,5 @@ def main():
 	while True:
 		sample_program()
 
- if __name__ == "__main__":
+if __name__ == "__main__":
 	main()
