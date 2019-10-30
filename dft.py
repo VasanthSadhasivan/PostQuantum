@@ -7,7 +7,6 @@ def modInverse(a, m) :
             return x 
     return 1
 
-#!/usr/bin/python
 def dft(data):
         #data length is n= 8
         n = 8
