@@ -17,5 +17,9 @@ int main(void)
     encrypted_message = encrypt(m, public_key);
     decrypted_message = decrypt(encrypted_message, private_key);
 
-    printf("%d", decrypted_message);
+    printf("Message: %d", m);
+    printf("Public Key: %f", public_key);
+    printf("Private Key: %f", private_key);
+    printf("Encrypted Message: %f", encrypted_message);
+    printf("Decrypted Message: %d", decrypted_message);
 }
