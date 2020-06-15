@@ -45,7 +45,7 @@ entity rlwe_core_control_unit is
 end rlwe_core_control_unit;
 
 architecture Behavioral of rlwe_core_control_unit is
-    TYPE STATE_TYPE IS (idle, start_core, mult_process, add_process, negate_process, output);
+    TYPE STATE_TYPE IS (idle, start_core, mult_process, add_process, negate_process, scalar_mult, output);
     SIGNAL state   : STATE_TYPE;
 begin
 
@@ -64,11 +64,13 @@ begin
                 when start_core =>
                     case mode is
                         when "00" =>
-                            state <= mult_process;
-                        when "01" =>
                             state <= add_process;
+                        when "01" =>
+                            state <= mult_process;
                         when "10" =>
                             state <= negate_process;
+                        when "11" =>
+                            state <= scalar_mult;
                     end case;
                 when mult_process =>
                     if poly_mult_valid = '0' then
@@ -80,7 +82,11 @@ begin
                     state <= output;
                 when negate_process =>
                     state <= output;
+                when scalar_mult =>
+                    state <= output;
                 when output =>
+                    state <= idle;
+                when others =>
                     state <= idle;
             end case;
         end if;
@@ -112,6 +118,12 @@ begin
             when negate_process =>
                 valid               <= '0';
                 poly_mult_start     <= '0';
+                output_sel          <= mode;
+                poly_mult_reset     <= '0';
+            when scalar_mult =>
+                valid               <= '0';
+                poly_mult_start     <= '0';
+                output_sel          <= mode;
                 poly_mult_reset     <= '0';
             when output =>
                 valid               <= '1';

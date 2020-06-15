@@ -9,7 +9,11 @@
 -- Target Devices: 
 -- Tool Versions: 
 -- Description: 
--- 
+-- 4 modes of operation:
+--      1. mode = 0 --> polynomial addition
+--      1. mode = 1 --> polynomial multiplication
+--      1. mode = 2 --> polynomial coefficient wise negation
+--      1. mode = 3 --> polynomial coefficient wise scalar multiplication
 -- Dependencies: 
 -- 
 -- Revision:
@@ -81,14 +85,22 @@ component poly_negate is
           output  : out port_t);
 end component;
 
+component poly_scalar_mult is
+    Port ( clk : in STD_LOGIC;
+           scalar : in unsigned(BIT_WIDTH-1 downto 0);
+           poly : in port_t;
+           output : out port_t);
+end component;
+
 signal poly_mult_valid  : std_logic;
 signal poly_mult_reset  : std_logic;
 signal poly_mult_start  : std_logic;
 signal output_sel       : std_logic_vector(1 downto 0);
 
-signal poly_add_output      : port_t;
-signal poly_mult_output     : port_t;
-signal poly_negate_output   : port_t;
+signal poly_add_output          : port_t;
+signal poly_mult_output         : port_t;
+signal poly_negate_output       : port_t;
+signal poly_scalar_mult_output  : port_t;
 
 begin
 
@@ -131,15 +143,25 @@ begin
         output  => poly_negate_output
     );
     
+    scalar_mult: poly_scalar_mult
+    port map (
+        clk     => clk,
+        scalar  => poly2(0),
+        poly    => poly1,
+        output  => poly_scalar_mult_output
+    );
     
-    output_mux : process(output_sel)
+    
+    output_mux : process(output_sel, poly_mult_output, poly_add_output, poly_negate_output)
     begin
         if output_sel = "00" then
             output <= poly_add_output;
         elsif output_sel = "01" then
             output <= poly_mult_output;
-        else
+        elsif output_sel = "10" then
             output <= poly_negate_output;
+        else
+            output <= poly_scalar_mult_output;
         end if;
     end process;
 

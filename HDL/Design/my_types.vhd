@@ -17,6 +17,7 @@ package my_types is
     constant BARRET_REDUCTION_CONSTANT : unsigned(BIT_WIDTH-1 downto 0) := to_unsigned(4192253, BIT_WIDTH);
     constant BARRET_REDUCTION_K : unsigned(BIT_WIDTH-1 downto 0) := to_unsigned(21, BIT_WIDTH);
     impure function read_mem_file(FileName : STRING) return port_t;
+    impure function initialize_q_2_ROM return port_t;
 end package;
 
 package body my_types is
@@ -42,6 +43,20 @@ package body my_types is
             exit when endfile(file_handle);
             readline(file_handle, current_line);
             hread(current_line, result(i));
+        end loop;
+       
+        return result;
+    end function;
+    
+    impure function initialize_q_2_ROM return port_t is
+        variable result      : port_t    := (others => (others => '0'));
+    begin
+        for i in 0 to POLYNOMIAL_LENGTH - 1 loop
+            if i = 0 then
+                result(i) := to_unsigned(MODULO/2, BIT_WIDTH);
+            else
+                result(i) := to_unsigned(0, BIT_WIDTH);
+            end if;
         end loop;
        
         return result;

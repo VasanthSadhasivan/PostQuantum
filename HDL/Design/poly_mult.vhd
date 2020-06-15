@@ -119,7 +119,7 @@ begin
     
     input_multiply_1: pointwise_multiplier
     port map (
-        in1 => in1,
+        in1 => poly1,
         in2 => phi,
         clk => clk,
         output => in1_phi
@@ -127,7 +127,7 @@ begin
     
     input_multiply_2: pointwise_multiplier
     port map (
-        in1 => in2,
+        in1 => poly2,
         in2 => phi,
         clk => clk,
         output => in2_phi
