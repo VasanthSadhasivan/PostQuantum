@@ -32,14 +32,18 @@ use work.my_types.all;
 --library UNISIM;
 --use UNISIM.VComponents.all;
 
-entity ROM_phi_inv is
+
+                            
+entity ROM_phi is
   Port (
-         phi_inv : out port_t);
-end ROM_phi_inv;
+         phi : out port_t);
+end ROM_phi;
 
-architecture Behavioral of ROM_phi_inv is
 
+
+architecture Behavioral of ROM_phi is
+
+/*signal main_data : port_t := read_mem_file("../imports/ROM_scripts/phi_ram.hex");*/
 begin
-
-
+    phi <= read_mem_file("phi_ram.hex");
 end Behavioral;

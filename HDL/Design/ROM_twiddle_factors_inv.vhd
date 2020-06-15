@@ -41,8 +41,13 @@ architecture Behavioral of ROM_twiddle_factors_inv is
 
 signal k_integer : integer := 0;
 signal w_integer : integer := 0;
+signal main_data : port_t; 
 
 begin
+    main_data <= read_mem_file("twiddle_factors_inv_ram.hex");
+    k_integer <= to_integer(k);
+    w <= unsigned(main_data(k_integer));
+    /*
     w <= to_unsigned(w_integer, BIT_WIDTH);
     k_integer <= to_integer(k);
     
@@ -561,6 +566,6 @@ begin
             462262 when 255,
             
             1 when others;
-        
+        */
 
 end Behavioral;

@@ -6,7 +6,7 @@ q = 1049089
 
 working_mod = find_modulus(n, q)
 primitive_root = find_primitive_root(n, working_mod - 1, working_mod)
-W = [(primitive_root**i)%working_mod for i in range(n)]
-PHI = [str(modular_sqrt(w, q)) for w in W]
+W = [str('{:x}'.format((primitive_root**i)%working_mod)).zfill(16) for i in range(n)]
 
-print('\n'.join(PHI))
+
+print('\n'.join(W))
