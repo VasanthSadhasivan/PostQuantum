@@ -2,9 +2,9 @@
 -- Company: 
 -- Engineer: 
 -- 
--- Create Date: 06/14/2020 11:27:29 PM
+-- Create Date: 06/15/2020 06:24:21 PM
 -- Design Name: 
--- Module Name: uniform_core - Behavioral
+-- Module Name: mux2to1 - Behavioral
 -- Project Name: 
 -- Target Devices: 
 -- Tool Versions: 
@@ -32,21 +32,25 @@ use work.my_types.all;
 --library UNISIM;
 --use UNISIM.VComponents.all;
 
-entity uniform_core is
-    Port (clk   : in std_logic;
-          gen   : in std_logic;
-          valid : out std_logic;
-          output: out port_t );
-end uniform_core;
+entity mux3to1 is
+    Port (input1    : in port_t;
+          input2    : in port_t;
+          input3    : in port_t;
+          sel       : in std_logic_vector(1 downto 0);
+          output    : out port_t );
+end mux3to1;
 
-architecture Behavioral of uniform_core is
+architecture Behavioral of mux3to1 is
 
 begin
-    
-    main: for i in 0 to to_integer(to_unsigned(POLYNOMIAL_LENGTH, BIT_WIDTH) - 1) generate
-        output(i) <= to_unsigned(i, BIT_WIDTH);
-    end generate main;
-
-    valid <= '1';
-
+    main: process(sel, input1, input2)
+    begin
+        if sel = "00" then
+            output <= input1;
+        elsif sel = "01" then
+            output <= input2;
+        else
+            output <= input3;
+        end if;
+    end process;
 end Behavioral;

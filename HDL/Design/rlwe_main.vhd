@@ -37,13 +37,19 @@ entity rlwe_main is
           mode  : in std_logic_vector(1 downto 0);
           start : in std_logic;
           reset : in std_logic;
-          encrypted_data_in1    : port_t;
-          encrypted_data_in2    : port_t;
-          unencrypted_data_in   : port_t;
+          encrypted_data_in1    : in port_t;
+          encrypted_data_in2    : in port_t;
+          decrypted_data_in   : in port_t;
+          public_key_in1           : in port_t;
+          public_key_in2           : in port_t;
+          private_key_in           : in port_t;
+          public_key_out1          : out port_t;
+          public_key_out2          : out port_t;
+          private_key_out          : out port_t;
           valid : out std_logic;
-          encrypted_data_out1   : port_t;
-          encrypted_data_out2   : port_t;
-          unencrypted_data_out  : port_t);
+          encrypted_data_out1   : out port_t;
+          encrypted_data_out2   : out port_t;
+          decrypted_data_out  : out port_t);
 end rlwe_main;
 
 architecture Behavioral of rlwe_main is
@@ -69,14 +75,17 @@ component main_control_unit is
           gaussian_reset            : out std_logic;
           rlwe_core_poly1_sel       : out std_logic_vector(2 downto 0);
           rlwe_core_poly2_sel       : out std_logic_vector(2 downto 0);
-          rlwe_core_mode            : out std_logic_vector(1 downto 0);
+          rlwe_core_mode            : out std_logic_vector(2 downto 0);
           rlwe_core_start           : out std_logic;
           rlwe_core_reset           : out std_logic;
           rlwe_core_valid           : in std_logic;
           encrypted_msg1_reg_rw     : out std_logic;
           encrypted_msg2_reg_rw     : out std_logic;
           encrypted_msg_input_sel   : out std_logic;
-          unencrypted_msg_reg_rw     : out std_logic
+          decrypted_msg_reg_rw     : out std_logic;
+          a_reg_input_sel       : out std_logic_vector(1 downto 0);
+          s_reg_input_sel       : out std_logic;
+          y_reg_input_sel       : out std_logic
           );
 end component;
 
@@ -90,7 +99,6 @@ end component;
 component gaussian_core is
     Port (clk           : in std_logic;
           gen           : in std_logic;
-          uniform_in    : in port_t;
           valid         : out std_logic;
           output        : out port_t );
 end component;
@@ -99,7 +107,7 @@ component rlwe_core is
     Port (clk       : in std_logic;
           start     : in std_logic;
           reset     : in std_logic;
-          mode      : in std_logic_vector(1 downto 0);
+          mode      : in std_logic_vector(2 downto 0);
           poly1     : in port_t;
           poly2     : in port_t;
           output    : out port_t;
@@ -113,6 +121,45 @@ component reg is
            input : in port_t;
            output : out port_t);
 end component;
+
+component mux2to1 is
+    Port (input1    : in port_t;
+          input2    : in port_t;
+          sel       : in std_logic;
+          output    : out port_t );
+end component;
+
+component mux3to1 is
+    Port (input1    : in port_t;
+          input2    : in port_t;
+          input3    : in port_t;
+          sel       : in std_logic_vector(1 downto 0);
+          output    : out port_t );
+end component;
+
+component mux5to1 is
+    Port (input1    : in port_t;
+          input2    : in port_t;
+          input3    : in port_t;
+          input4    : in port_t;
+          input5    : in port_t;
+          sel       : in std_logic_vector(2 downto 0);
+          output    : out port_t );
+end component;
+
+
+component mux7to1 is
+    Port (input1    : in port_t;
+          input2    : in port_t;
+          input3    : in port_t;
+          input4    : in port_t;
+          input5    : in port_t;
+          input6    : in port_t;
+          input7    : in port_t;
+          sel       : in std_logic_vector(2 downto 0);
+          output    : out port_t );
+end component;
+
 
 signal temp_reg_rw : std_logic;
 signal y_reg_rw : std_logic;
@@ -129,14 +176,17 @@ signal gaussian_valid : std_logic;
 signal gaussian_reset : std_logic;
 signal rlwe_core_poly1_sel : std_logic_vector(2 downto 0);
 signal rlwe_core_poly2_sel : std_logic_vector(2 downto 0);
-signal rlwe_core_mode : std_logic_vector(1 downto 0);
+signal rlwe_core_mode : std_logic_vector(2 downto 0);
 signal rlwe_core_start : std_logic;
 signal rlwe_core_reset : std_logic;
 signal rlwe_core_valid : std_logic;
 signal encrypted_msg1_reg_rw : std_logic;
 signal encrypted_msg2_reg_rw : std_logic;
 signal encrypted_msg_input_sel : std_logic;
-signal unencrypted_msg_reg_rw : std_logic;
+signal decrypted_msg_reg_rw : std_logic;
+signal a_reg_input_sel : std_logic_vector(1 downto 0);
+signal s_reg_input_sel : std_logic;
+signal y_reg_input_sel : std_logic;
 
 signal uniform_output : port_t;
 signal gaussian_output : port_t;
@@ -154,15 +204,30 @@ signal s_reg_out                    : port_t;
 signal e1_reg_out                   : port_t;
 signal r_reg_out                    : port_t;
 signal e2_reg_out                   : port_t;
-signal unencrypted_msg_reg_out      : port_t;
-signal unencrypted_msg_reg_input    : port_t;
+signal decrypted_msg_reg_out      : port_t;
+signal decrypted_msg_reg_input    : port_t;
 signal encrypted_msg2_reg_out       : port_t;
 signal encrypted_msg1_reg_input     : port_t;
 signal encrypted_msg2_reg_input     : port_t;
+signal a_reg_input                  : port_t;
+signal s_reg_input                  : port_t;
+signal y_reg_input                  : port_t;
 
 
 begin
     q_2_ROM_out <= initialize_q_2_ROM;
+    
+    public_key_out1 <= a_reg_out;
+    public_key_out2 <= y_reg_out;
+
+    private_key_out <= s_reg_out;
+
+    encrypted_data_out1 <= encrypted_msg1_reg_out;
+    encrypted_data_out2 <= encrypted_msg2_reg_out;
+
+    decrypted_data_out <= decrypted_msg_reg_out;
+    
+    decrypted_msg_reg_input <= rlwe_core_output;
 
     control_unit: main_control_unit
     port map (
@@ -193,7 +258,10 @@ begin
         encrypted_msg1_reg_rw   => encrypted_msg1_reg_rw,
         encrypted_msg2_reg_rw   => encrypted_msg2_reg_rw,
         encrypted_msg_input_sel => encrypted_msg_input_sel,
-        unencrypted_msg_reg_rw   => unencrypted_msg_reg_rw
+        decrypted_msg_reg_rw  => decrypted_msg_reg_rw,
+        a_reg_input_sel         => a_reg_input_sel,
+        s_reg_input_sel         => s_reg_input_sel,
+        y_reg_input_sel         => y_reg_input_sel
     );
 
     uniform_rng: uniform_core
@@ -208,7 +276,6 @@ begin
     port map (
         clk         => clk,
         gen         => gaussian_gen,
-        uniform_in  => uniform_output,
         valid       => gaussian_valid,
         output      => gaussian_output
     );
@@ -225,72 +292,69 @@ begin
         valid   => rlwe_core_valid
     );
     
-    rlwe_core_poly1_mux: process(rlwe_core_poly1_sel,
-                                 a_reg_out,
-                                 temp_reg_out,
-                                 y_reg_out,
-                                 encrypted_msg1_reg_out,
-                                 unencrypted_data_in)
-    begin
-        case rlwe_core_poly1_sel is 
-            when "000" =>
-                rlwe_core_poly1 <= a_reg_out;
-            when "001" =>
-                rlwe_core_poly1 <= temp_reg_out;
-            when "010" =>
-                rlwe_core_poly1 <= y_reg_out;
-            when "011" =>
-                rlwe_core_poly1 <= encrypted_msg1_reg_out;
-            when "100" =>
-                rlwe_core_poly1 <= unencrypted_data_in;
-            when others =>
-                rlwe_core_poly1 <= a_reg_out;
-        end case;
-    end process;
+    rlwe_core_poly1_mux: mux5to1
+    port map(input1 => a_reg_out,
+             input2 => temp_reg_out,
+             input3 => y_reg_out,
+             input4 => encrypted_msg1_reg_out,
+             input5 => decrypted_data_in,
+             sel    => rlwe_core_poly1_sel,
+             output => rlwe_core_poly1
+    );    
     
-    rlwe_core_poly2_mux: process(rlwe_core_poly1_sel,
-                                 s_reg_out,
-                                 e1_reg_out,
-                                 r_reg_out,
-                                 e2_reg_out,
-                                 unencrypted_msg_reg_out,
-                                 encrypted_msg2_reg_out,
-                                 q_2_ROM_out,
-                                 s_reg_out)
-    begin
-        case rlwe_core_poly1_sel is 
-            when "000" =>
-                rlwe_core_poly1 <= s_reg_out;
-            when "001" =>
-                rlwe_core_poly1 <= e1_reg_out;
-            when "010" =>
-                rlwe_core_poly1 <= r_reg_out;
-            when "011" =>
-                rlwe_core_poly1 <= e2_reg_out;
-            when "100" =>
-                rlwe_core_poly1 <= unencrypted_msg_reg_out;
-            when "101" =>
-                rlwe_core_poly1 <= encrypted_msg2_reg_out;
-            when "110" =>
-                rlwe_core_poly1 <= q_2_ROM_out;
-            when others =>
-                rlwe_core_poly1 <= s_reg_out;
-        end case;
-    end process;
     
-    encrypted_msg_reg_input_mux: process(encrypted_msg_input_sel,
-                                         encrypted_data_in1,
-                                         encrypted_data_in2,
-                                         rlwe_core_output)
-    begin
-        if encrypted_msg_input_sel = '0' then
-            encrypted_msg1_reg_input <= encrypted_data_in1;
-            encrypted_msg2_reg_input <= encrypted_data_in2;
-        else
-            encrypted_msg1_reg_input <= rlwe_core_output;
-            encrypted_msg2_reg_input <= rlwe_core_output;
-        end if;
-    end process;
+    rlwe_core_poly2_mux: mux7to1
+    port map(input1 => s_reg_out,
+             input2 => e1_reg_out,
+             input3 => r_reg_out,
+             input4 => e2_reg_out,
+             input5 => decrypted_msg_reg_out,
+             input6 => encrypted_msg2_reg_out,
+             input7 => q_2_ROM_out,
+             sel    => rlwe_core_poly2_sel,
+             output => rlwe_core_poly2
+    );    
+    
+    encrypted_msg_reg_input1_mux: mux2to1
+    port map(input1 => encrypted_data_in1,
+             input2 => rlwe_core_output,
+             sel    => encrypted_msg_input_sel,
+             output => encrypted_msg1_reg_input
+        
+    );
+    
+    encrypted_msg_reg_input2_mux: mux2to1
+    port map(input1 => encrypted_data_in2,
+             input2 => rlwe_core_output,
+             sel    => encrypted_msg_input_sel,
+             output => encrypted_msg2_reg_input
+        
+    );
+    
+    a_reg_input_mux: mux3to1
+    port map(input1 => uniform_output,
+             input2 => public_key_in1,
+             input3 => rlwe_core_output,
+             sel    => a_reg_input_sel,
+             output => a_reg_input
+        
+    );
+    
+    s_reg_input_mux: mux2to1
+    port map(input1 => gaussian_output,
+             input2 => private_key_in,
+             sel    => s_reg_input_sel,
+             output => s_reg_input
+        
+    );
+    
+    y_reg_input_mux: mux2to1
+    port map(input1 => rlwe_core_output,
+             input2 => public_key_in2,
+             sel    => y_reg_input_sel,
+             output => y_reg_input
+        
+    );
     
     temp_reg : reg
     port map (
@@ -304,7 +368,7 @@ begin
     port map (
         clk     => clk,
         rw      => y_reg_rw,
-        input   => rlwe_core_output,
+        input   => y_reg_input,
         output  => y_reg_out
     );
     
@@ -328,7 +392,7 @@ begin
     port map (
         clk     => clk,
         rw      => s_reg_rw,
-        input   => gaussian_output,
+        input   => s_reg_input,
         output  => s_reg_out
     );
     
@@ -344,7 +408,7 @@ begin
     port map (
         clk     => clk,
         rw      => a_reg_rw,
-        input   => uniform_output,
+        input   => a_reg_input,
         output  => a_reg_out
     );
     
@@ -364,11 +428,11 @@ begin
         output  => encrypted_msg2_reg_out
     );
 
-    unencrypted_msg_reg : reg
+    decrypted_msg_reg : reg
     port map (
         clk     => clk,
-        rw      => unencrypted_msg_reg_rw,
-        input   => unencrypted_msg_reg_input,
-        output  => unencrypted_msg_reg_out
+        rw      => decrypted_msg_reg_rw,
+        input   => decrypted_msg_reg_input,
+        output  => decrypted_msg_reg_out
     );
 end Behavioral;

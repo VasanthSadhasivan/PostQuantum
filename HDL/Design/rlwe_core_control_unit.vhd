@@ -34,22 +34,22 @@ use work.my_types.all;
 
 entity rlwe_core_control_unit is
     Port (clk               : in std_logic;
-          mode              : in std_logic_vector(1 downto 0);
+          mode              : in std_logic_vector(2 downto 0);
           start             : in std_logic;
           reset             : in std_logic;
           poly_mult_valid   : in std_logic;
           valid             : out std_logic;
           poly_mult_reset   : out std_logic;
           poly_mult_start   : out std_logic;
-          output_sel        : out std_logic_vector(1 downto 0));
+          output_sel        : out std_logic_vector(2 downto 0));
 end rlwe_core_control_unit;
 
 architecture Behavioral of rlwe_core_control_unit is
-    TYPE STATE_TYPE IS (idle, start_core, mult_process, add_process, negate_process, scalar_mult, output);
+    TYPE STATE_TYPE IS (idle, start_core, mult_process, add_process, negate_process, scalar_mult, decode_process, output);
     SIGNAL state   : STATE_TYPE;
 begin
 
-    fsm : process(clk)
+    fsm : process(clk, reset)
     begin
         if reset = '1'  then
             state <= idle;
@@ -63,14 +63,18 @@ begin
                     end if;
                 when start_core =>
                     case mode is
-                        when "00" =>
+                        when "000" =>
                             state <= add_process;
-                        when "01" =>
+                        when "001" =>
                             state <= mult_process;
-                        when "10" =>
+                        when "010" =>
                             state <= negate_process;
-                        when "11" =>
+                        when "011" =>
                             state <= scalar_mult;
+                        when "100" =>
+                            state <= decode_process;
+                        when others =>
+                            state <= add_process;
                     end case;
                 when mult_process =>
                     if poly_mult_valid = '0' then
@@ -84,6 +88,8 @@ begin
                     state <= output;
                 when scalar_mult =>
                     state <= output;
+                when decode_process =>
+                    state <= output;
                 when output =>
                     state <= idle;
                 when others =>
@@ -92,7 +98,7 @@ begin
         end if;
     end process;
     
-    combinational : process(state)
+    combinational : process(state, mode)
     begin
         case state is
             when idle =>
@@ -121,6 +127,11 @@ begin
                 output_sel          <= mode;
                 poly_mult_reset     <= '0';
             when scalar_mult =>
+                valid               <= '0';
+                poly_mult_start     <= '0';
+                output_sel          <= mode;
+                poly_mult_reset     <= '0';
+            when decode_process =>
                 valid               <= '0';
                 poly_mult_start     <= '0';
                 output_sel          <= mode;

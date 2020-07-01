@@ -34,6 +34,12 @@ component poly_mult_control_unit is
            reset    : in STD_LOGIC);
 end component;
 
+component coeff_reverse is
+    Port (  input   : in port_t;
+            output  : out port_t );
+end component;
+
+
 component ntt is
   Port (clk     : in std_logic;
         reset   : in std_logic;
@@ -70,6 +76,9 @@ component ROM_phi_inv is
          phi_inv : out port_t);
 end component;
 
+signal poly1_reverse    :   port_t;
+signal poly2_reverse    :   port_t;
+signal output_unreverse :   port_t;
 signal phi      :   port_t;
 signal phi_inv  :   port_t;
 signal in1_phi  :   port_t;
@@ -105,7 +114,25 @@ begin
         valid       => valid     ,
         start       => start     ,
         reset       => reset     
-    );    
+    );
+    
+    input1_coeff_reverse: coeff_reverse
+    port map (
+        input => poly1,
+        output => poly1_reverse
+    );
+    
+    input2_coeff_reverse: coeff_reverse
+    port map (
+        input => poly2,
+        output => poly2_reverse
+    );
+    
+    output_coeff_reverse: coeff_reverse
+    port map (
+        input => output_unreverse,
+        output => output
+    );
     
     output_phi: ROM_phi
     port map (
@@ -119,7 +146,7 @@ begin
     
     input_multiply_1: pointwise_multiplier
     port map (
-        in1 => poly1,
+        in1 => poly1_reverse,
         in2 => phi,
         clk => clk,
         output => in1_phi
@@ -127,7 +154,7 @@ begin
     
     input_multiply_2: pointwise_multiplier
     port map (
-        in1 => poly2,
+        in1 => poly2_reverse,
         in2 => phi,
         clk => clk,
         output => in2_phi
@@ -138,7 +165,7 @@ begin
         in1 => output_inv,
         in2 => phi_inv,
         clk => clk,
-        output => output
+        output => output_unreverse
     );
 
     transform_input_1: ntt

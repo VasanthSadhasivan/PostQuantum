@@ -40,7 +40,7 @@ entity rlwe_core is
     Port (clk   : in std_logic;
           start : in std_logic;
           reset : in std_logic;
-          mode  : in std_logic_vector(1 downto 0);
+          mode  : in std_logic_vector(2 downto 0);
           poly1 : in port_t;
           poly2 : in port_t;
           output: out port_t;
@@ -52,14 +52,14 @@ architecture Behavioral of rlwe_core is
 
 component rlwe_core_control_unit is
     Port (clk               : in std_logic;
-          mode              : in std_logic_vector(1 downto 0);
+          mode              : in std_logic_vector(2 downto 0);
           start             : in std_logic;
           reset             : in std_logic;
           poly_mult_valid   : in std_logic;
           valid             : out std_logic;
           poly_mult_reset   : out std_logic;
           poly_mult_start   : out std_logic;
-          output_sel        : out std_logic_vector(1 downto 0));
+          output_sel        : out std_logic_vector(2 downto 0));
 end component;
 
 component poly_mult is
@@ -92,15 +92,22 @@ component poly_scalar_mult is
            output : out port_t);
 end component;
 
+component decoder is
+    Port (clk     : in std_logic;
+          poly1   : in port_t;
+          output  : out port_t);
+end component;
+
 signal poly_mult_valid  : std_logic;
 signal poly_mult_reset  : std_logic;
 signal poly_mult_start  : std_logic;
-signal output_sel       : std_logic_vector(1 downto 0);
+signal output_sel       : std_logic_vector(2 downto 0);
 
 signal poly_add_output          : port_t;
 signal poly_mult_output         : port_t;
 signal poly_negate_output       : port_t;
 signal poly_scalar_mult_output  : port_t;
+signal poly_decoded_output  : port_t;
 
 begin
 
@@ -151,17 +158,25 @@ begin
         output  => poly_scalar_mult_output
     );
     
+    decrypt_decoder: decoder
+    port map (
+        clk     => clk,
+        poly1   => poly2,
+        output  => poly_decoded_output
+    );
     
-    output_mux : process(output_sel, poly_mult_output, poly_add_output, poly_negate_output)
+    output_mux : process(output_sel, poly_mult_output, poly_add_output, poly_negate_output, poly_scalar_mult_output, poly_decoded_output)
     begin
-        if output_sel = "00" then
+        if output_sel = "000" then
             output <= poly_add_output;
-        elsif output_sel = "01" then
+        elsif output_sel = "001" then
             output <= poly_mult_output;
-        elsif output_sel = "10" then
+        elsif output_sel = "010" then
             output <= poly_negate_output;
-        else
+        elsif output_sel = "011" then
             output <= poly_scalar_mult_output;
+        else 
+            output <= poly_decoded_output;
         end if;
     end process;
 

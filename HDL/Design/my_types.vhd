@@ -1,4 +1,5 @@
 library IEEE;
+library std;
 
 use IEEE.STD_LOGIC_1164.ALL;
 use IEEE.math_real.ALL;

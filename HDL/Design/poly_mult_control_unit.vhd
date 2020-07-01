@@ -52,7 +52,7 @@ architecture Behavioral of poly_mult_control_unit is
     SIGNAL state   : STATE_TYPE;
 begin
 
-    fsm : process(clk)
+    fsm : process(clk, reset)
     begin
         if(reset = '1') then
             state <= idle;

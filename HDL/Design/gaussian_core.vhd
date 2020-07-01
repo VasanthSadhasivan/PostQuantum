@@ -35,7 +35,6 @@ use work.my_types.all;
 entity gaussian_core is
     Port (clk           : in std_logic;
           gen           : in std_logic;
-          uniform_in    : in port_t;
           valid         : out std_logic;
           output        : out port_t );
 end gaussian_core;
@@ -44,5 +43,10 @@ architecture Behavioral of gaussian_core is
 
 begin
 
+    main: for i in 0 to to_integer(to_unsigned(POLYNOMIAL_LENGTH, BIT_WIDTH) - 1) generate
+        output(i) <= to_unsigned(1, BIT_WIDTH);
+    end generate main;
+
+    valid <= '1';
 
 end Behavioral;
