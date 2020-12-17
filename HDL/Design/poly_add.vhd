@@ -35,8 +35,8 @@ use work.my_types.all;
 
 entity poly_add is
     Port (clk     : in std_logic;
-          poly1   : in port_t;
-          poly2   : in port_t;
+          poly_0   : in port_t;
+          poly_1   : in port_t;
           output  : out port_t);
 end poly_add;
 
@@ -55,7 +55,7 @@ begin
         process(clk)
         begin
             if rising_edge(clk) then
-                output_double(i) <= poly1(i) + poly2(i);
+                output_double(i) <= poly_0(i) + poly_1(i);
             end if;
 		end process;
 		

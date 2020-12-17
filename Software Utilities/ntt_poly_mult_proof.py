@@ -21,9 +21,7 @@ root = find_primitive_root(n, mod - 1, mod)
 polynomial_in_length = 256
 
 poly1 = [1 for i in range(polynomial_in_length)] + (n-polynomial_in_length)*[0]
-poly2 = [i for i in range(polynomial_in_length)] + (n-polynomial_in_length)*[0]
-
-
+poly2 = [polynomial_in_length-1-i for i in range(polynomial_in_length)] + (n-polynomial_in_length)*[0]
 
 phi_multiplied1 = [(PHI[i] * poly1[i]) % q for i in range(n)]
 phi_multiplied2 = [(PHI[i] * poly2[i]) % q for i in range(n)]
@@ -44,10 +42,9 @@ print("NTT Output:\t\t", phi_inv_mult)
 
 
 f = numpy.poly1d([1] + [0] * (n - 1) + [1])
-poly1 = numpy.poly1d([x for x in reversed(poly1)])
-poly2 = numpy.poly1d([x for x in reversed(poly2)])
-
-numpy_result = list(reversed([int(i) for i in list(numpy.fmod(numpy.polydiv(numpy.fmod((poly1 * poly2), q), f)[1], q))])) + (n - len(list(numpy.fmod(numpy.polydiv(numpy.fmod((poly1 * poly2), q), f)[1], q))))*[0]
+poly1 = numpy.poly1d(numpy.array([x for x in reversed(poly1)], dtype=object))
+poly2 = numpy.poly1d(numpy.array([x for x in reversed(poly2)], dtype=object))
+numpy_result = list(reversed([int(i) for i in list(mymod(numpy.polydiv(mymod((poly1 * poly2), q), f)[1], q))])) + (n - len(list(mymod(numpy.polydiv(mymod((poly1 * poly2), q), f)[1], q))))*[0]
 numpy_result = [i % q for i in numpy_result]
 
 print("Numpy Output:\t", numpy_result)

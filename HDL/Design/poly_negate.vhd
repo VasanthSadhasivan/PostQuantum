@@ -47,7 +47,11 @@ begin
         process(clk)
         begin
             if rising_edge(clk) then
-                output(i) <= MODULO - poly(i);
+                if poly(i) /= to_unsigned(0, BIT_WIDTH) then
+                    output(i) <= MODULO - poly(i);
+                else
+                    output(i) <= to_unsigned(0, BIT_WIDTH);
+                end if;
             end if;
 		end process;
     end generate main;

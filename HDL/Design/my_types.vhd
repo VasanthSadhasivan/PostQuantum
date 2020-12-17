@@ -10,8 +10,12 @@ package my_types is
     function log2 (x : positive) return natural;
     constant BIT_WIDTH : integer := 64;
     constant POLYNOMIAL_LENGTH : integer := 256;
+    subtype instruction_op_t is unsigned(17 downto 0);
     type port_t is array(POLYNOMIAL_LENGTH-1 downto 0) of unsigned(BIT_WIDTH-1 downto 0);
     type double_port_t is array(POLYNOMIAL_LENGTH-1 downto 0) of unsigned(2*BIT_WIDTH-1 downto 0);
+    type port_array_t is array (0 to 15) of port_t;
+    subtype instruction_t is unsigned(17 downto 0);
+    constant POLYNOMIAL_LENGTH_LOG : natural := log2(POLYNOMIAL_LENGTH);
     constant NUM_STAGES : natural := log2(POLYNOMIAL_LENGTH);
     constant NUM_STAGES_INV : natural := 1044991;
     constant MODULO : natural := 1049089;

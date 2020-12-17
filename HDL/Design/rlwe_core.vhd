@@ -41,8 +41,8 @@ entity rlwe_core is
           start : in std_logic;
           reset : in std_logic;
           mode  : in std_logic_vector(2 downto 0);
-          poly1 : in port_t;
-          poly2 : in port_t;
+          poly_0 : in port_t;
+          poly_1 : in port_t;
           output: out port_t;
           valid : out std_logic
            );
@@ -59,14 +59,15 @@ component rlwe_core_control_unit is
           valid             : out std_logic;
           poly_mult_reset   : out std_logic;
           poly_mult_start   : out std_logic;
+          rw_in             : out std_logic;
           output_sel        : out std_logic_vector(2 downto 0));
 end component;
 
 component poly_mult is
     Port (clk     : in std_logic;
           reset   : in std_logic; 
-          poly1   : in port_t;
-          poly2   : in port_t;
+          poly_0   : in port_t;
+          poly_1   : in port_t;
           start   : in std_logic;
           output  : out port_t;
           valid   : out std_logic);
@@ -74,8 +75,8 @@ end component;
 
 component poly_add is
     Port (clk     : in std_logic;
-          poly1   : in port_t;
-          poly2   : in port_t;
+          poly_0   : in port_t;
+          poly_1   : in port_t;
           output  : out port_t);
 end component;
 
@@ -94,7 +95,7 @@ end component;
 
 component decoder is
     Port (clk     : in std_logic;
-          poly1   : in port_t;
+          poly_0   : in port_t;
           output  : out port_t);
 end component;
 
@@ -102,25 +103,31 @@ signal poly_mult_valid  : std_logic;
 signal poly_mult_reset  : std_logic;
 signal poly_mult_start  : std_logic;
 signal output_sel       : std_logic_vector(2 downto 0);
+signal rw_in            : std_logic;
 
 signal poly_add_output          : port_t;
 signal poly_mult_output         : port_t;
 signal poly_negate_output       : port_t;
 signal poly_scalar_mult_output  : port_t;
-signal poly_decoded_output  : port_t;
+signal poly_decoded_output      : port_t;
+
+signal poly_0_buffer    : port_t;
+signal poly_1_buffer    : port_t;
+signal mode_buffer      : std_logic_vector(2 downto 0);
 
 begin
 
     control_unit: rlwe_core_control_unit
     port map (
         clk             => clk,
-        mode            => mode,
+        mode            => mode_buffer,
         start           => start,
         reset           => reset,
         poly_mult_valid => poly_mult_valid,
         valid           => valid,
         poly_mult_reset => poly_mult_reset,
         poly_mult_start => poly_mult_start,
+        rw_in           => rw_in,
         output_sel      => output_sel
     );
 
@@ -128,8 +135,8 @@ begin
     port map (
         clk     => clk,
         reset   => reset,
-        poly1   => poly1,
-        poly2   => poly2,
+        poly_0   => poly_0_buffer,
+        poly_1   => poly_1_buffer,
         start   => poly_mult_start,
         output  => poly_mult_output,
         valid   => poly_mult_valid
@@ -138,32 +145,43 @@ begin
     adder: poly_add
     port map (
         clk     => clk,
-        poly1   => poly1,
-        poly2   => poly2,
+        poly_0   => poly_0_buffer,
+        poly_1   => poly_1_buffer,
         output  => poly_add_output
     );
     
     negate: poly_negate
     port map (
         clk     => clk,
-        poly    => poly1,
+        poly    => poly_1_buffer,
         output  => poly_negate_output
     );
     
     scalar_mult: poly_scalar_mult
     port map (
         clk     => clk,
-        scalar  => poly2(0),
-        poly    => poly1,
+        scalar  => poly_0_buffer(0),
+        poly    => poly_1_buffer,
         output  => poly_scalar_mult_output
     );
     
     decrypt_decoder: decoder
     port map (
         clk     => clk,
-        poly1   => poly2,
+        poly_0   => poly_1_buffer,
         output  => poly_decoded_output
     );
+        
+    input_buffer : process(clk)
+    begin
+        if rising_edge(clk) then
+            if rw_in = '1' then
+                poly_0_buffer   <= poly_0;
+                poly_1_buffer   <= poly_1;
+                mode_buffer     <= mode;
+            end if;
+        end if;
+    end process;
     
     output_mux : process(output_sel, poly_mult_output, poly_add_output, poly_negate_output, poly_scalar_mult_output, poly_decoded_output)
     begin
@@ -179,6 +197,5 @@ begin
             output <= poly_decoded_output;
         end if;
     end process;
-
 
 end Behavioral;

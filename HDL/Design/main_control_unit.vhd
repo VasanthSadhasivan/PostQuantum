@@ -33,46 +33,89 @@ use work.my_types.all;
 --use UNISIM.VComponents.all;
 
 entity main_control_unit is
-    Port (clk                   : in std_logic;
-          mode                  : in std_logic_vector(1 downto 0);
-          start                 : in std_logic;
-          reset                 : in std_logic;
-          valid                 : out std_logic;
-          temp_reg_rw           : out std_logic;
-          y_reg_rw              : out std_logic;
-          e2_reg_rw             : out std_logic;
-          e1_reg_rw             : out std_logic;
-          s_reg_rw              : out std_logic;
-          r_reg_rw              : out std_logic;
-          a_reg_rw              : out std_logic;
-          uniform_gen           : out std_logic;
-          uniform_valid         : in std_logic;
-          uniform_reset         : out std_logic;
-          gaussian_gen          : out std_logic;
-          gaussian_valid        : in std_logic;
-          gaussian_reset        : out std_logic;
-          rlwe_core_poly1_sel   : out std_logic_vector(2 downto 0);
-          rlwe_core_poly2_sel   : out std_logic_vector(2 downto 0);
-          rlwe_core_mode        : out std_logic_vector(2 downto 0);
-          rlwe_core_start       : out std_logic;
-          rlwe_core_reset       : out std_logic;
-          rlwe_core_valid       : in std_logic;
-          encrypted_msg1_reg_rw   : out std_logic;
-          encrypted_msg2_reg_rw   : out std_logic;
-          encrypted_msg_input_sel : out std_logic;
-          decrypted_msg_reg_rw: out std_logic;
-          a_reg_input_sel       : out std_logic_vector(1 downto 0);
-          s_reg_input_sel       : out std_logic;
-          y_reg_input_sel       : out std_logic
-          );
+    Port (
+        clk                     : in std_logic;
+        start                   : in std_logic;
+        reset                   : in std_logic;
+        instruction             : in instruction_t;
+        valid                   : out std_logic;
+        reg_file_sel_0          : out std_logic_vector(3 downto 0);
+        reg_file_sel_1          : out std_logic_vector(3 downto 0);
+        reg_file_rw_0           : out std_logic;
+        reg_file_rw_1           : out std_logic;
+        reg_file_in_0_sel       : out std_logic;
+        reg_file_in_1_sel       : out std_logic;
+        uniform_gen             : out std_logic;
+        uniform_reset           : out std_logic;
+        uniform_valid           : in std_logic;
+        gaussian_gen            : out std_logic;
+        gaussian_reset          : out std_logic;
+        gaussian_valid          : in std_logic;
+        rlwe_core_poly_1_sel    : out std_logic;
+        rlwe_core_mode          : out std_logic_vector(2 downto 0);
+        rlwe_core_start         : out std_logic;
+        rlwe_core_reset         : out std_logic;
+        rlwe_core_valid         : in std_logic;
+        output_test             : out std_logic
+    );
 end main_control_unit;
 
 architecture Behavioral of main_control_unit is
-    TYPE STATE_TYPE IS (idle, key_gen_init, a_s_reg_gen, a_s_reg_write, a_mult_s_and_e_gen, temp_write, public_key_gen, write_y_key, done,
-                              encrypt_init, encrypt_input_parse, store_parsed_input, e1_reg_gen, e1_reg_write, e2_reg_gen, e2_reg_write, a_mult_r, a_mult_r_write, encrypt1_calc, encrypt1_write, y_mult_r, y_mult_r_write, y_mult_r_plus_e2, y_mult_r_plus_e2_write, final_encrypt_calc, encrypt2_write,
-                              decrypt_init, decrypt_1, decrypt_1_write, negate_decrypt_1, negate_decrypt_1_write, decrypt_2_minus_decrypt_1, decrypt_2_minus_decrypt_1_write, decode_decrypt, decode_write);
-    SIGNAL state   : STATE_TYPE;
+
+    TYPE STATE_TYPE IS (idle, 
+                        decode, 
+                        arith_only_init,
+                        random_only_init,
+                        storage_only_writeback,
+                        arith_and_random_init,
+                        storage_and_random_init,
+                        arith_only_op,
+                        random_only_writeback,
+                        arith_and_random_op,
+                        arith_only_writeback,
+                        done);
+                        
+    signal state    : STATE_TYPE;
+    
+    signal op_1     : std_logic_vector(3 downto 0);
+    signal op_2     : std_logic_vector(1 downto 0);
+    signal rx_1     : std_logic_vector(3 downto 0);
+    signal ry       : std_logic_vector(3 downto 0);
+    signal rx_2     : std_logic_vector(3 downto 0);
+    
+    -- Helper Signals --
+    signal inst_is_arith    : std_logic;
+    signal inst_is_storage  : std_logic;
+    signal inst_is_random   : std_logic;
+    
 begin
+
+    rx_2 <= std_logic_vector(instruction(3 downto 0));
+    op_2 <= std_logic_vector(instruction(5 downto 4));
+    ry <= std_logic_vector(instruction(9 downto 6));
+    rx_1 <= std_logic_vector(instruction(13 downto 10));
+    op_1 <= std_logic_vector(instruction(17 downto 14));
+    
+    helper_signal_driver : process(op_1, op_2)
+    begin
+        if op_1 /= "0000" and op_1 /= "1000" then
+            inst_is_arith <= '1';
+        else
+            inst_is_arith <= '0';
+        end if;
+        
+        if op_1 = "1000" then
+            inst_is_storage <= '1';
+        else
+            inst_is_storage <= '0';
+        end if;
+        
+        if op_2 = "01" or op_2 = "10" then
+            inst_is_random <= '1';
+        else
+            inst_is_random <= '0';
+        end if;
+    end process;
 
     fsm : process(clk, reset)
     begin
@@ -82,1028 +125,389 @@ begin
             case state is
                 when idle => 
                     if start = '1' then
-                        case mode is
-                            when "00" =>
-                                state <= key_gen_init;
-                            when "01" =>
-                                state <= encrypt_init;
-                            when "10" =>
-                                state <= decrypt_init;
-                            when "11" =>
-                                state <= idle;
-                            when others =>
-                                state <= idle;
-                        end case;
-                    end if;
-                when key_gen_init =>
-                    state <= a_s_reg_gen;
-                when a_s_reg_gen =>
-                    if uniform_valid = '1' and gaussian_valid = '1' then
-                        state <= a_s_reg_write;
+                        state <= decode;
                     else
-                        state <= a_s_reg_gen;
+                        state <= idle;
                     end if;
-                when a_s_reg_write =>
-                    state <= a_mult_s_and_e_gen;
-                when a_mult_s_and_e_gen =>
-                    if rlwe_core_valid = '1' and gaussian_valid = '1' then
-                        state <= temp_write;
+                when decode =>
+                    if inst_is_arith = '1' and inst_is_random = '0' then
+                        state <= arith_only_init;
+                    elsif inst_is_arith = '0' and inst_is_storage = '0' and inst_is_random= '1' then
+                        state <= random_only_init;
+                    elsif inst_is_storage = '1' and inst_is_random = '0' then
+                        state <= storage_only_writeback;
+                    elsif inst_is_arith = '1' and inst_is_random= '1' then
+                        state <= arith_and_random_init;
+                    elsif inst_is_storage = '1' and inst_is_random = '1' then
+                        state <= storage_and_random_init;
                     else
-                        state <= a_mult_s_and_e_gen;
+                        state <= decode;
                     end if;
-                when temp_write =>
-                    state <= public_key_gen;
-                when public_key_gen =>
-                    state <= write_y_key;
-                when write_y_key =>
+                when arith_only_init =>
+                    state <= arith_only_op;
+                when random_only_init =>
+                    if gaussian_valid = '1' or uniform_valid = '1' then
+                        state <= random_only_writeback;
+                    else
+                        state <= random_only_init;
+                    end if;
+                when storage_only_writeback =>
                     state <= done;
-                when encrypt_init =>
-                    state <= encrypt_input_parse;
-                when encrypt_input_parse =>
-                    if gaussian_valid = '1' then
-                        state <= store_parsed_input;
+                when arith_and_random_init =>
+                    if gaussian_valid = '1' or uniform_valid = '1' then
+                        state <= arith_and_random_op;
                     else
-                        state <= encrypt_input_parse;
+                        state <= arith_and_random_init;
                     end if;
-                when store_parsed_input => 
-                    state <= e1_reg_gen;
-                when e1_reg_gen =>
-                    if gaussian_valid = '1' then
-                        state <= e1_reg_write;
+                when storage_and_random_init =>
+                    if gaussian_valid = '1' or uniform_valid = '1' then
+                        state <= random_only_writeback;
                     else
-                        state <= e1_reg_gen;
+                        state <= storage_and_random_init;
                     end if;
-                when e1_reg_write =>
-                    state <= e2_reg_gen;
-                when e2_reg_gen =>
-                    if gaussian_valid = '1' then
-                        state <= e2_reg_write;
-                    else
-                        state <= e2_reg_gen;
-                    end if;
-                when e2_reg_write =>
-                    state <= a_mult_r;
-                when a_mult_r =>
+                when arith_only_op =>
                     if rlwe_core_valid = '1' then
-                        state <= a_mult_r_write;
+                        state <= arith_only_writeback;
                     else
-                        state <= a_mult_r;
+                        state <= arith_only_op;
                     end if;
-                when a_mult_r_write =>
-                    state <= encrypt1_calc;
-                when encrypt1_calc =>
-                    state <= encrypt1_write;
-                when encrypt1_write =>
-                    state <= y_mult_r;
-                when y_mult_r =>
-                    if rlwe_core_valid = '1' then
-                        state <= y_mult_r_write;
-                    else
-                        state <= y_mult_r;
-                    end if;
-                when y_mult_r_write =>
-                    state <= y_mult_r_plus_e2;
-                when y_mult_r_plus_e2 =>
-                    state <= y_mult_r_plus_e2_write;
-                when y_mult_r_plus_e2_write =>
-                    state <= final_encrypt_calc;
-                when final_encrypt_calc =>
-                    state <= encrypt2_write;
-                when encrypt2_write =>
+                when random_only_writeback =>
                     state <= done;
-                when decrypt_init =>
-                    state <= decrypt_1;
-                when decrypt_1 =>
+                when arith_and_random_op =>
                     if rlwe_core_valid = '1' then
-                        state <= decrypt_1_write;
+                        state <= arith_only_writeback;
                     else
-                        state <= decrypt_1;
+                        state <= arith_and_random_op;
                     end if;
-                when decrypt_1_write =>
-                    state <= negate_decrypt_1;
-                when negate_decrypt_1 =>
-                    state <= negate_decrypt_1_write;
-                when negate_decrypt_1_write =>
-                    state <= decrypt_2_minus_decrypt_1;
-                when decrypt_2_minus_decrypt_1 =>
-                    state <= decrypt_2_minus_decrypt_1_write;
-                when decrypt_2_minus_decrypt_1_write =>
-                    state <= decode_decrypt;
-                when decode_decrypt =>
-                    state <= decode_write;
-                when decode_write =>
+                when arith_only_writeback =>
                     state <= done;
                 when done =>
-                    state <= idle;
-                when others =>
                     state <= idle;
             end case;
         end if;
     end process;
 
-    combinational : process(state)
+    combinational : process(state, op_1, op_2, rx_1, rx_2, ry)
     begin
         case state is
             when idle =>
                 valid                   <= '0';
-                temp_reg_rw             <= '0';
-                y_reg_rw                <= '0';
-                e2_reg_rw               <= '0';
-                e1_reg_rw               <= '0';
-                s_reg_rw                <= '0';
-                r_reg_rw                <= '0';
-                a_reg_rw                <= '0';
-                uniform_gen             <= '0';
-                uniform_reset           <= '0';
-                gaussian_gen            <= '0';
-                gaussian_reset          <= '0';
-                rlwe_core_poly1_sel     <= "000";
-                rlwe_core_poly2_sel     <= "000";
-                rlwe_core_mode          <= "000";
-                rlwe_core_start         <= '0';
-                rlwe_core_reset         <= '0';
-                encrypted_msg1_reg_rw   <= '0';
-                encrypted_msg2_reg_rw   <= '0';
-                encrypted_msg_input_sel <= '0';
-                decrypted_msg_reg_rw  <= '0';
-                a_reg_input_sel         <= "00";
-                s_reg_input_sel         <= '0';
-                y_reg_input_sel         <= '0';
-            when key_gen_init =>
-                valid                   <= '0';
-                temp_reg_rw             <= '0';
-                y_reg_rw                <= '0';
-                e2_reg_rw               <= '0';
-                e1_reg_rw               <= '0';
-                s_reg_rw                <= '0';
-                r_reg_rw                <= '0';
-                a_reg_rw                <= '0';
+                reg_file_sel_0          <= "0000";
+                reg_file_sel_1          <= "0000";
+                reg_file_rw_0           <= '0';
+                reg_file_rw_1           <= '0';
+                reg_file_in_0_sel       <= '0';
+                reg_file_in_1_sel       <= '0';
                 uniform_gen             <= '0';
                 uniform_reset           <= '1';
                 gaussian_gen            <= '0';
                 gaussian_reset          <= '1';
-                rlwe_core_poly1_sel     <= "000";
-                rlwe_core_poly2_sel     <= "000";
+                rlwe_core_poly_1_sel    <= '0';
                 rlwe_core_mode          <= "000";
                 rlwe_core_start         <= '0';
-                rlwe_core_reset         <= '0';
-                encrypted_msg1_reg_rw   <= '0';
-                encrypted_msg2_reg_rw   <= '0';
-                encrypted_msg_input_sel <= '0';
-                decrypted_msg_reg_rw  <= '0';
-                a_reg_input_sel         <= "00";
-                s_reg_input_sel         <= '0';
-                y_reg_input_sel         <= '0';
-            when a_s_reg_gen =>
+                rlwe_core_reset         <= '1';
+                output_test             <= '0';
+            when decode =>
                 valid                   <= '0';
-                temp_reg_rw             <= '0';
-                y_reg_rw                <= '0';
-                e2_reg_rw               <= '0';
-                e1_reg_rw               <= '0';
-                s_reg_rw                <= '0';
-                r_reg_rw                <= '0';
-                a_reg_rw                <= '0';
-                uniform_gen             <= '1';
-                uniform_reset           <= '0';
-                gaussian_gen            <= '1';
-                gaussian_reset          <= '0';
-                rlwe_core_poly1_sel     <= "000";
-                rlwe_core_poly2_sel     <= "000";
-                rlwe_core_mode          <= "000";
-                rlwe_core_start         <= '0';
-                rlwe_core_reset         <= '0';
-                encrypted_msg1_reg_rw   <= '0';
-                encrypted_msg2_reg_rw   <= '0';
-                encrypted_msg_input_sel <= '0';
-                decrypted_msg_reg_rw  <= '0';
-                a_reg_input_sel         <= "00";
-                s_reg_input_sel         <= '0';
-                y_reg_input_sel         <= '0';
-            when a_s_reg_write =>
-                valid                   <= '0';
-                temp_reg_rw             <= '0';
-                y_reg_rw                <= '0';
-                e2_reg_rw               <= '0';
-                e1_reg_rw               <= '0';
-                s_reg_rw                <= '1';
-                r_reg_rw                <= '0';
-                a_reg_rw                <= '1';
+                reg_file_sel_0          <= "0000";
+                reg_file_sel_1          <= "0000";
+                reg_file_rw_0           <= '0';
+                reg_file_rw_1           <= '0';
+                reg_file_in_0_sel       <= '0';
+                reg_file_in_1_sel       <= '0';
                 uniform_gen             <= '0';
-                uniform_reset           <= '0';
+                uniform_reset           <= '1';
                 gaussian_gen            <= '0';
                 gaussian_reset          <= '1';
-                rlwe_core_poly1_sel     <= "000";
-                rlwe_core_poly2_sel     <= "000";
+                rlwe_core_poly_1_sel    <= '0';
                 rlwe_core_mode          <= "000";
                 rlwe_core_start         <= '0';
                 rlwe_core_reset         <= '1';
-                encrypted_msg1_reg_rw   <= '0';
-                encrypted_msg2_reg_rw   <= '0';
-                encrypted_msg_input_sel <= '0';
-                decrypted_msg_reg_rw  <= '0';
-                a_reg_input_sel         <= "00";
-                s_reg_input_sel         <= '0';
-                y_reg_input_sel         <= '0';
-            when a_mult_s_and_e_gen =>
+                output_test             <= '0';
+            when arith_only_init =>
                 valid                   <= '0';
-                temp_reg_rw             <= '0';
-                y_reg_rw                <= '0';
-                e2_reg_rw               <= '0';
-                e1_reg_rw               <= '0';
-                s_reg_rw                <= '0';
-                r_reg_rw                <= '0';
-                a_reg_rw                <= '0';
-                uniform_gen             <= '0';
-                uniform_reset           <= '0';
-                gaussian_gen            <= '1';
-                gaussian_reset          <= '0';
-                rlwe_core_poly1_sel     <= "000";
-                rlwe_core_poly2_sel     <= "000";
-                rlwe_core_mode          <= "001";
-                rlwe_core_start         <= '1';
-                rlwe_core_reset         <= '0';
-                encrypted_msg1_reg_rw   <= '0';
-                encrypted_msg2_reg_rw   <= '0';
-                encrypted_msg_input_sel <= '0';
-                decrypted_msg_reg_rw  <= '0';
-                a_reg_input_sel         <= "00";
-                s_reg_input_sel         <= '0';
-                y_reg_input_sel         <= '0';
-            when temp_write =>
-                valid                   <= '0';
-                temp_reg_rw             <= '1';
-                y_reg_rw                <= '0';
-                e2_reg_rw               <= '0';
-                e1_reg_rw               <= '1';
-                s_reg_rw                <= '0';
-                r_reg_rw                <= '0';
-                a_reg_rw                <= '0';
+                reg_file_rw_0           <= '0';
+                reg_file_rw_1           <= '0';
+                reg_file_in_0_sel       <= '0';
+                reg_file_in_1_sel       <= '0';
                 uniform_gen             <= '0';
                 uniform_reset           <= '0';
                 gaussian_gen            <= '0';
                 gaussian_reset          <= '0';
-                rlwe_core_poly1_sel     <= "000";
-                rlwe_core_poly2_sel     <= "000";
-                rlwe_core_mode          <= "001";
-                rlwe_core_start         <= '0';
-                rlwe_core_reset         <= '1';
-                encrypted_msg1_reg_rw   <= '0';
-                encrypted_msg2_reg_rw   <= '0';
-                encrypted_msg_input_sel <= '0';
-                decrypted_msg_reg_rw  <= '0';
-                a_reg_input_sel         <= "00";
-                s_reg_input_sel         <= '0';
-                y_reg_input_sel         <= '0';
-            when public_key_gen =>
-                valid                   <= '0';
-                temp_reg_rw             <= '0';
-                y_reg_rw                <= '0';
-                e2_reg_rw               <= '0';
-                e1_reg_rw               <= '0';
-                s_reg_rw                <= '0';
-                r_reg_rw                <= '0';
-                a_reg_rw                <= '0';
-                uniform_gen             <= '0';
-                uniform_reset           <= '0';
-                gaussian_gen            <= '0';
-                gaussian_reset          <= '0';
-                rlwe_core_poly1_sel     <= "001";
-                rlwe_core_poly2_sel     <= "001";
-                rlwe_core_mode          <= "000";
-                rlwe_core_start         <= '1';
-                rlwe_core_reset         <= '0';
-                encrypted_msg1_reg_rw   <= '0';
-                encrypted_msg2_reg_rw   <= '0';
-                encrypted_msg_input_sel <= '0';
-                decrypted_msg_reg_rw  <= '0';
-                a_reg_input_sel         <= "00";
-                s_reg_input_sel         <= '0';
-                y_reg_input_sel         <= '0';
-            when write_y_key =>
-                valid                   <= '0';
-                temp_reg_rw             <= '0';
-                y_reg_rw                <= '1';
-                e2_reg_rw               <= '0';
-                e1_reg_rw               <= '0';
-                s_reg_rw                <= '0';
-                r_reg_rw                <= '0';
-                a_reg_rw                <= '0';
-                uniform_gen             <= '0';
-                uniform_reset           <= '0';
-                gaussian_gen            <= '0';
-                gaussian_reset          <= '0';
-                rlwe_core_poly1_sel     <= "000";
-                rlwe_core_poly2_sel     <= "000";
+                rlwe_core_poly_1_sel    <= '0';
                 rlwe_core_mode          <= "000";
                 rlwe_core_start         <= '0';
                 rlwe_core_reset         <= '0';
-                encrypted_msg1_reg_rw   <= '0';
-                encrypted_msg2_reg_rw   <= '0';
-                encrypted_msg_input_sel <= '0';
-                decrypted_msg_reg_rw  <= '0';
-                a_reg_input_sel         <= "00";
-                s_reg_input_sel         <= '0';
-                y_reg_input_sel         <= '0';
+                output_test             <= '0';
+                
+                if op_1 = "0010" or op_1 = "0101" then
+                    reg_file_sel_0          <= rx_1;
+                    reg_file_sel_1          <= rx_1;
+                else
+                    reg_file_sel_0          <= rx_1;
+                    reg_file_sel_1          <= ry;
+                end if;
+            when random_only_init =>
+                valid                   <= '0';
+                reg_file_sel_0          <= "0000";
+                reg_file_sel_1          <= "0000";
+                reg_file_rw_0           <= '0';
+                reg_file_rw_1           <= '0';
+                reg_file_in_0_sel       <= '0';
+                reg_file_in_1_sel       <= '0';
+                uniform_reset           <= '0';
+                gaussian_reset          <= '0';
+                rlwe_core_poly_1_sel    <= '0';
+                rlwe_core_mode          <= "000";
+                rlwe_core_start         <= '0';
+                rlwe_core_reset         <= '0';
+                output_test             <= '0';
+                
+                case op_2 is
+                    when "01" =>
+                        uniform_gen             <= '0';
+                        gaussian_gen            <= '1';
+                    when "10" =>
+                        uniform_gen             <= '1';
+                        gaussian_gen            <= '0';
+                    when others =>
+                        uniform_gen             <= '0';
+                        gaussian_gen            <= '0';
+                end case;
+            when storage_only_writeback =>
+                valid                   <= '0';
+                reg_file_sel_1          <= "0000";
+                reg_file_rw_0           <= '1';
+                reg_file_rw_1           <= '0';
+                reg_file_in_0_sel       <= '1';
+                reg_file_in_1_sel       <= '0';
+                uniform_gen             <= '0';
+                uniform_reset           <= '0';
+                gaussian_gen            <= '0';
+                gaussian_reset          <= '0';
+                rlwe_core_poly_1_sel    <= '0';
+                rlwe_core_mode          <= "000";
+                rlwe_core_start         <= '0';
+                rlwe_core_reset         <= '0';
+                output_test             <= '1';
+                
+                reg_file_sel_0          <= rx_1;
+            when arith_and_random_init =>
+                valid                   <= '0';
+                reg_file_rw_0           <= '0';
+                reg_file_rw_1           <= '0';
+                reg_file_in_0_sel       <= '0';
+                reg_file_in_1_sel       <= '0';
+                uniform_reset           <= '0';
+                gaussian_reset          <= '0';
+                rlwe_core_poly_1_sel    <= '0';
+                rlwe_core_mode          <= "000";
+                rlwe_core_start         <= '0';
+                rlwe_core_reset         <= '0';
+                output_test             <= '0';
+                
+                case op_2 is
+                    when "01" =>
+                        uniform_gen             <= '0';
+                        gaussian_gen            <= '1';
+                    when "10" =>
+                        uniform_gen             <= '1';
+                        gaussian_gen            <= '0';
+                    when others =>
+                        uniform_gen             <= '0';
+                        gaussian_gen            <= '0';
+                end case;
+                
+                if op_1 = "0010" or op_1 = "0101" then
+                    reg_file_sel_0          <= rx_1;
+                    reg_file_sel_1          <= rx_1;
+                else
+                    reg_file_sel_0          <= rx_1;
+                    reg_file_sel_1          <= ry;
+                end if;
+            when storage_and_random_init =>
+                valid                   <= '0';
+                reg_file_sel_1          <= "0000";
+                reg_file_rw_0           <= '1';
+                reg_file_rw_1           <= '0';
+                reg_file_in_0_sel       <= '1';
+                reg_file_in_1_sel       <= '0';
+                uniform_reset           <= '0';
+                gaussian_reset          <= '0';
+                rlwe_core_poly_1_sel    <= '0';
+                rlwe_core_mode          <= "000";
+                rlwe_core_start         <= '0';
+                rlwe_core_reset         <= '0';
+                output_test             <= '0';
+                
+                reg_file_sel_0          <= rx_1;
+                case op_2 is
+                    when "01" =>
+                        uniform_gen             <= '0';
+                        gaussian_gen            <= '1';
+                    when "10" =>
+                        uniform_gen             <= '1';
+                        gaussian_gen            <= '0';
+                    when others =>
+                        uniform_gen             <= '0';
+                        gaussian_gen            <= '0';
+                end case;
+            when arith_only_op =>
+                valid                   <= '0';
+                reg_file_sel_0          <= "0000";
+                reg_file_sel_1          <= "0000";
+                reg_file_rw_0           <= '0';
+                reg_file_rw_1           <= '0';
+                reg_file_in_0_sel       <= '0';
+                reg_file_in_1_sel       <= '0';
+                uniform_gen             <= '0';
+                uniform_reset           <= '0';
+                gaussian_gen            <= '0';
+                gaussian_reset          <= '0';
+                rlwe_core_start         <= '1';
+                rlwe_core_reset         <= '0';
+                output_test             <= '0';
+                
+                if op_1 = "0010" or op_1 = "0101" then
+                    rlwe_core_poly_1_sel    <= '0';
+                else
+                    rlwe_core_poly_1_sel    <= '1';
+                end if;
+                
+                if op_1 = "0001" or op_1 = "0010" then
+                    rlwe_core_mode          <= "000";
+                elsif op_1 = "0011" then
+                    rlwe_core_mode          <= "010";
+                elsif op_1 = "0100" or op_1 = "0101" then
+                    rlwe_core_mode          <= "001";
+                elsif op_1 = "0110" then 
+                    rlwe_core_mode          <= "011";
+                elsif op_1 = "0111" then
+                    rlwe_core_mode          <= "100";
+                else
+                    rlwe_core_mode          <= "000";
+                end if;
+            when random_only_writeback =>
+                valid                   <= '0';
+                reg_file_sel_0          <= "0000";
+                reg_file_rw_0           <= '0';
+                reg_file_rw_1           <= '1';
+                reg_file_in_0_sel       <= '0';
+                uniform_gen             <= '0';
+                uniform_reset           <= '0';
+                gaussian_gen            <= '0';
+                gaussian_reset          <= '0';
+                rlwe_core_poly_1_sel    <= '0';
+                rlwe_core_mode          <= "000";
+                rlwe_core_start         <= '0';
+                rlwe_core_reset         <= '0';
+                output_test             <= '1';
+                
+                case op_2 is 
+                    when "01" =>
+                        reg_file_in_1_sel       <= '1';
+                    when "10" =>
+                        reg_file_in_1_sel       <= '0';
+                    when others =>
+                        reg_file_in_1_sel       <= '0';
+                end case;
+                reg_file_sel_1          <= rx_2;
+            when arith_and_random_op =>
+                valid                   <= '0';
+                reg_file_sel_0          <= "0000";
+                reg_file_rw_0           <= '0';
+                reg_file_rw_1           <= '1';
+                reg_file_in_0_sel       <= '0';
+                uniform_gen             <= '0';
+                uniform_reset           <= '0';
+                gaussian_gen            <= '0';
+                gaussian_reset          <= '0';
+                rlwe_core_start         <= '1';
+                rlwe_core_reset         <= '0';
+                output_test             <= '0';
+                
+                case op_2 is 
+                    when "01" =>
+                        reg_file_in_1_sel       <= '1';
+                    when "10" =>
+                        reg_file_in_1_sel       <= '0';
+                    when others =>
+                        reg_file_in_1_sel       <= '0';
+                end case;
+                reg_file_sel_1          <= rx_2;
+                
+                
+                if op_1 = "0010" or op_1 = "0101" then
+                    rlwe_core_poly_1_sel    <= '0';
+                else
+                    rlwe_core_poly_1_sel    <= '1';
+                end if;
+                
+                if op_1 = "0001" or op_1 = "0010" then
+                    rlwe_core_mode          <= "000";
+                elsif op_1 = "0011" then
+                    rlwe_core_mode          <= "010";
+                elsif op_1 = "0100" or op_1 = "0101" then
+                    rlwe_core_mode          <= "001";
+                elsif op_1 = "0110" then 
+                    rlwe_core_mode          <= "011";
+                elsif op_1 = "0111" then
+                    rlwe_core_mode          <= "100";
+                else
+                    rlwe_core_mode          <= "000";
+                end if;
+            when arith_only_writeback =>
+                valid                   <= '0';
+                reg_file_sel_1          <= "0000";
+                reg_file_rw_0           <= '1';
+                reg_file_rw_1           <= '0';
+                reg_file_in_0_sel       <= '1';
+                reg_file_in_1_sel       <= '0';
+                uniform_gen             <= '0';
+                uniform_reset           <= '0';
+                gaussian_gen            <= '0';
+                gaussian_reset          <= '0';
+                rlwe_core_poly_1_sel    <= '0';
+                rlwe_core_mode          <= "000";
+                rlwe_core_start         <= '0';
+                rlwe_core_reset         <= '0';
+                output_test             <= '1';
+                
+                reg_file_sel_0          <= rx_1;
             when done =>
                 valid                   <= '1';
-                temp_reg_rw             <= '0';
-                y_reg_rw                <= '0';
-                e2_reg_rw               <= '0';
-                e1_reg_rw               <= '0';
-                s_reg_rw                <= '0';
-                r_reg_rw                <= '0';
-                a_reg_rw                <= '0';
+                reg_file_sel_0          <= "0000";
+                reg_file_sel_1          <= "0000";
+                reg_file_rw_0           <= '0';
+                reg_file_rw_1           <= '0';
+                reg_file_in_0_sel       <= '0';
+                reg_file_in_1_sel       <= '0';
                 uniform_gen             <= '0';
                 uniform_reset           <= '0';
                 gaussian_gen            <= '0';
                 gaussian_reset          <= '0';
-                rlwe_core_poly1_sel     <= "000";
-                rlwe_core_poly2_sel     <= "000";
+                rlwe_core_poly_1_sel    <= '0';
                 rlwe_core_mode          <= "000";
                 rlwe_core_start         <= '0';
                 rlwe_core_reset         <= '0';
-                encrypted_msg1_reg_rw   <= '0';
-                encrypted_msg2_reg_rw   <= '0';
-                encrypted_msg_input_sel <= '0';
-                decrypted_msg_reg_rw  <= '0';
-                a_reg_input_sel         <= "00";
-                s_reg_input_sel         <= '0';
-                y_reg_input_sel         <= '0';
-            when encrypt_init =>
-                valid                   <= '0';
-                temp_reg_rw             <= '0';
-                y_reg_rw                <= '1';
-                e2_reg_rw               <= '0';
-                e1_reg_rw               <= '0';
-                s_reg_rw                <= '0';
-                r_reg_rw                <= '0';
-                a_reg_rw                <= '1';
-                uniform_gen             <= '0';
-                uniform_reset           <= '0';
-                gaussian_gen            <= '0';
-                gaussian_reset          <= '1';
-                rlwe_core_poly1_sel     <= "000";
-                rlwe_core_poly2_sel     <= "000";
-                rlwe_core_mode          <= "000";
-                rlwe_core_start         <= '0';
-                rlwe_core_reset         <= '1';
-                encrypted_msg1_reg_rw   <= '0';
-                encrypted_msg2_reg_rw   <= '0';
-                encrypted_msg_input_sel <= '0';
-                decrypted_msg_reg_rw  <= '0';
-                a_reg_input_sel         <= "01";
-                s_reg_input_sel         <= '0';
-                y_reg_input_sel         <= '1';
-            when encrypt_input_parse =>
-                valid                   <= '0';
-                temp_reg_rw             <= '0';
-                y_reg_rw                <= '0';
-                e2_reg_rw               <= '0';
-                e1_reg_rw               <= '0';
-                s_reg_rw                <= '0';
-                r_reg_rw                <= '0';
-                a_reg_rw                <= '0';
-                uniform_gen             <= '0';
-                uniform_reset           <= '0';
-                gaussian_gen            <= '1';
-                gaussian_reset          <= '0';
-                rlwe_core_poly1_sel     <= "100";
-                rlwe_core_poly2_sel     <= "110";
-                rlwe_core_mode          <= "011";
-                rlwe_core_start         <= '1';
-                rlwe_core_reset         <= '0';
-                encrypted_msg1_reg_rw   <= '0';
-                encrypted_msg2_reg_rw   <= '0';
-                encrypted_msg_input_sel <= '0';
-                decrypted_msg_reg_rw  <= '0';
-                a_reg_input_sel         <= "00";
-                s_reg_input_sel         <= '0';
-                y_reg_input_sel         <= '0';
-            when store_parsed_input =>
-                valid                   <= '0';
-                temp_reg_rw             <= '0';
-                y_reg_rw                <= '0';
-                e2_reg_rw               <= '0';
-                e1_reg_rw               <= '0';
-                s_reg_rw                <= '0';
-                r_reg_rw                <= '1';
-                a_reg_rw                <= '0';
-                uniform_gen             <= '0';
-                uniform_reset           <= '0';
-                gaussian_gen            <= '0';
-                gaussian_reset          <= '1';
-                rlwe_core_poly1_sel     <= "000";
-                rlwe_core_poly2_sel     <= "000";
-                rlwe_core_mode          <= "011";
-                rlwe_core_start         <= '0';
-                rlwe_core_reset         <= '0';
-                encrypted_msg1_reg_rw   <= '0';
-                encrypted_msg2_reg_rw   <= '0';
-                encrypted_msg_input_sel <= '0';
-                decrypted_msg_reg_rw  <= '1';
-                a_reg_input_sel         <= "00";
-                s_reg_input_sel         <= '0';
-                y_reg_input_sel         <= '0';
-            when e1_reg_gen =>
-                valid                   <= '0';
-                temp_reg_rw             <= '0';
-                y_reg_rw                <= '0';
-                e2_reg_rw               <= '0';
-                e1_reg_rw               <= '0';
-                s_reg_rw                <= '0';
-                r_reg_rw                <= '0';
-                a_reg_rw                <= '0';
-                uniform_gen             <= '0';
-                uniform_reset           <= '0';
-                gaussian_gen            <= '1';
-                gaussian_reset          <= '0';
-                rlwe_core_poly1_sel     <= "000";
-                rlwe_core_poly2_sel     <= "000";
-                rlwe_core_mode          <= "000";
-                rlwe_core_start         <= '0';
-                rlwe_core_reset         <= '0';
-                encrypted_msg1_reg_rw   <= '0';
-                encrypted_msg2_reg_rw   <= '0';
-                encrypted_msg_input_sel <= '0';
-                decrypted_msg_reg_rw  <= '0';
-                a_reg_input_sel         <= "00";
-                s_reg_input_sel         <= '0';
-                y_reg_input_sel         <= '0';
-            when e1_reg_write =>
-                valid                   <= '0';
-                temp_reg_rw             <= '0';
-                y_reg_rw                <= '0';
-                e2_reg_rw               <= '0';
-                e1_reg_rw               <= '1';
-                s_reg_rw                <= '0';
-                r_reg_rw                <= '0';
-                a_reg_rw                <= '0';
-                uniform_gen             <= '0';
-                uniform_reset           <= '0';
-                gaussian_gen            <= '0';
-                gaussian_reset          <= '1';
-                rlwe_core_poly1_sel     <= "000";
-                rlwe_core_poly2_sel     <= "000";
-                rlwe_core_mode          <= "000";
-                rlwe_core_start         <= '0';
-                rlwe_core_reset         <= '0';
-                encrypted_msg1_reg_rw   <= '0';
-                encrypted_msg2_reg_rw   <= '0';
-                encrypted_msg_input_sel <= '0';
-                decrypted_msg_reg_rw  <= '0';
-                a_reg_input_sel         <= "00";
-                s_reg_input_sel         <= '0';
-                y_reg_input_sel         <= '0';
-            when e2_reg_gen =>
-                valid                   <= '0';
-                temp_reg_rw             <= '0';
-                y_reg_rw                <= '0';
-                e2_reg_rw               <= '0';
-                e1_reg_rw               <= '0';
-                s_reg_rw                <= '0';
-                r_reg_rw                <= '0';
-                a_reg_rw                <= '0';
-                uniform_gen             <= '0';
-                uniform_reset           <= '0';
-                gaussian_gen            <= '1';
-                gaussian_reset          <= '0';
-                rlwe_core_poly1_sel     <= "000";
-                rlwe_core_poly2_sel     <= "000";
-                rlwe_core_mode          <= "000";
-                rlwe_core_start         <= '0';
-                rlwe_core_reset         <= '0';
-                encrypted_msg1_reg_rw   <= '0';
-                encrypted_msg2_reg_rw   <= '0';
-                encrypted_msg_input_sel <= '0';
-                decrypted_msg_reg_rw  <= '0';
-                a_reg_input_sel         <= "00";
-                s_reg_input_sel         <= '0';
-                y_reg_input_sel         <= '0';
-            when e2_reg_write =>
-                valid                   <= '0';
-                temp_reg_rw             <= '0';
-                y_reg_rw                <= '0';
-                e2_reg_rw               <= '1';
-                e1_reg_rw               <= '0';
-                s_reg_rw                <= '0';
-                r_reg_rw                <= '0';
-                a_reg_rw                <= '0';
-                uniform_gen             <= '0';
-                uniform_reset           <= '0';
-                gaussian_gen            <= '0';
-                gaussian_reset          <= '0';
-                rlwe_core_poly1_sel     <= "000";
-                rlwe_core_poly2_sel     <= "000";
-                rlwe_core_mode          <= "000";
-                rlwe_core_start         <= '0';
-                rlwe_core_reset         <= '1';
-                encrypted_msg1_reg_rw   <= '0';
-                encrypted_msg2_reg_rw   <= '0';
-                encrypted_msg_input_sel <= '0';
-                decrypted_msg_reg_rw  <= '0';
-                a_reg_input_sel         <= "00";
-                s_reg_input_sel         <= '0';
-                y_reg_input_sel         <= '0';
-            when a_mult_r =>
-                valid                   <= '0';
-                temp_reg_rw             <= '0';
-                y_reg_rw                <= '0';
-                e2_reg_rw               <= '0';
-                e1_reg_rw               <= '0';
-                s_reg_rw                <= '0';
-                r_reg_rw                <= '0';
-                a_reg_rw                <= '0';
-                uniform_gen             <= '0';
-                uniform_reset           <= '0';
-                gaussian_gen            <= '0';
-                gaussian_reset          <= '0';
-                rlwe_core_poly1_sel     <= "000";
-                rlwe_core_poly2_sel     <= "010";
-                rlwe_core_mode          <= "001";
-                rlwe_core_start         <= '1';
-                rlwe_core_reset         <= '0';
-                encrypted_msg1_reg_rw   <= '0';
-                encrypted_msg2_reg_rw   <= '0';
-                encrypted_msg_input_sel <= '0';
-                decrypted_msg_reg_rw  <= '0';
-                a_reg_input_sel         <= "00";
-                s_reg_input_sel         <= '0';
-                y_reg_input_sel         <= '0';
-            when a_mult_r_write =>
-                valid                   <= '0';
-                temp_reg_rw             <= '1';
-                y_reg_rw                <= '0';
-                e2_reg_rw               <= '0';
-                e1_reg_rw               <= '0';
-                s_reg_rw                <= '0';
-                r_reg_rw                <= '0';
-                a_reg_rw                <= '0';
-                uniform_gen             <= '0';
-                uniform_reset           <= '0';
-                gaussian_gen            <= '0';
-                gaussian_reset          <= '0';
-                rlwe_core_poly1_sel     <= "000";
-                rlwe_core_poly2_sel     <= "000";
-                rlwe_core_mode          <= "001";
-                rlwe_core_start         <= '0';
-                rlwe_core_reset         <= '1';
-                encrypted_msg1_reg_rw   <= '0';
-                encrypted_msg2_reg_rw   <= '0';
-                encrypted_msg_input_sel <= '0';
-                decrypted_msg_reg_rw  <= '0';
-                a_reg_input_sel         <= "00";
-                s_reg_input_sel         <= '0';
-                y_reg_input_sel         <= '0';
-            when encrypt1_calc =>
-                valid                   <= '0';
-                temp_reg_rw             <= '0';
-                y_reg_rw                <= '0';
-                e2_reg_rw               <= '0';
-                e1_reg_rw               <= '0';
-                s_reg_rw                <= '0';
-                r_reg_rw                <= '0';
-                a_reg_rw                <= '0';
-                uniform_gen             <= '0';
-                uniform_reset           <= '0';
-                gaussian_gen            <= '0';
-                gaussian_reset          <= '0';
-                rlwe_core_poly1_sel     <= "001";
-                rlwe_core_poly2_sel     <= "001";
-                rlwe_core_mode          <= "000";
-                rlwe_core_start         <= '1';
-                rlwe_core_reset         <= '0';
-                encrypted_msg1_reg_rw   <= '0';
-                encrypted_msg2_reg_rw   <= '0';
-                encrypted_msg_input_sel <= '0';
-                decrypted_msg_reg_rw  <= '0';
-                a_reg_input_sel         <= "00";
-                s_reg_input_sel         <= '0';
-                y_reg_input_sel         <= '0';
-            when encrypt1_write =>
-                valid                   <= '0';
-                temp_reg_rw             <= '0';
-                y_reg_rw                <= '0';
-                e2_reg_rw               <= '0';
-                e1_reg_rw               <= '0';
-                s_reg_rw                <= '0';
-                r_reg_rw                <= '0';
-                a_reg_rw                <= '1';
-                uniform_gen             <= '0';
-                uniform_reset           <= '0';
-                gaussian_gen            <= '0';
-                gaussian_reset          <= '0';
-                rlwe_core_poly1_sel     <= "000";
-                rlwe_core_poly2_sel     <= "000";
-                rlwe_core_mode          <= "000";
-                rlwe_core_start         <= '0';
-                rlwe_core_reset         <= '1';
-                encrypted_msg1_reg_rw   <= '1';
-                encrypted_msg2_reg_rw   <= '0';
-                encrypted_msg_input_sel <= '1';
-                decrypted_msg_reg_rw  <= '0';
-                a_reg_input_sel         <= "00";
-                s_reg_input_sel         <= '0';
-                y_reg_input_sel         <= '0';
-            when y_mult_r =>
-                valid                   <= '0';
-                temp_reg_rw             <= '0';
-                y_reg_rw                <= '0';
-                e2_reg_rw               <= '0';
-                e1_reg_rw               <= '0';
-                s_reg_rw                <= '0';
-                r_reg_rw                <= '0';
-                a_reg_rw                <= '0';
-                uniform_gen             <= '0';
-                uniform_reset           <= '0';
-                gaussian_gen            <= '0';
-                gaussian_reset          <= '0';
-                rlwe_core_poly1_sel     <= "010";
-                rlwe_core_poly2_sel     <= "010";
-                rlwe_core_mode          <= "001";
-                rlwe_core_start         <= '1';
-                rlwe_core_reset         <= '0';
-                encrypted_msg1_reg_rw   <= '0';
-                encrypted_msg2_reg_rw   <= '0';
-                encrypted_msg_input_sel <= '0';
-                decrypted_msg_reg_rw  <= '0';
-                a_reg_input_sel         <= "00";
-                s_reg_input_sel         <= '0';
-                y_reg_input_sel         <= '0';
-            when y_mult_r_write =>
-                valid                   <= '0';
-                temp_reg_rw             <= '1';
-                y_reg_rw                <= '0';
-                e2_reg_rw               <= '0';
-                e1_reg_rw               <= '0';
-                s_reg_rw                <= '0';
-                r_reg_rw                <= '0';
-                a_reg_rw                <= '0';
-                uniform_gen             <= '0';
-                uniform_reset           <= '0';
-                gaussian_gen            <= '0';
-                gaussian_reset          <= '0';
-                rlwe_core_poly1_sel     <= "000";
-                rlwe_core_poly2_sel     <= "000";
-                rlwe_core_mode          <= "001";
-                rlwe_core_start         <= '0';
-                rlwe_core_reset         <= '1';
-                encrypted_msg1_reg_rw   <= '0';
-                encrypted_msg2_reg_rw   <= '0';
-                encrypted_msg_input_sel <= '0';
-                decrypted_msg_reg_rw  <= '0';
-                a_reg_input_sel         <= "00";
-                s_reg_input_sel         <= '0';
-                y_reg_input_sel         <= '0';
-            when y_mult_r_plus_e2 =>
-                valid                   <= '0';
-                temp_reg_rw             <= '0';
-                y_reg_rw                <= '0';
-                e2_reg_rw               <= '0';
-                e1_reg_rw               <= '0';
-                s_reg_rw                <= '0';
-                r_reg_rw                <= '0';
-                a_reg_rw                <= '0';
-                uniform_gen             <= '0';
-                uniform_reset           <= '0';
-                gaussian_gen            <= '0';
-                gaussian_reset          <= '0';
-                rlwe_core_poly1_sel     <= "001";
-                rlwe_core_poly2_sel     <= "011";
-                rlwe_core_mode          <= "000";
-                rlwe_core_start         <= '1';
-                rlwe_core_reset         <= '0';
-                encrypted_msg1_reg_rw   <= '0';
-                encrypted_msg2_reg_rw   <= '0';
-                encrypted_msg_input_sel <= '0';
-                decrypted_msg_reg_rw  <= '0';
-                a_reg_input_sel         <= "00";
-                s_reg_input_sel         <= '0';
-                y_reg_input_sel         <= '0';
-            when y_mult_r_plus_e2_write =>
-                valid                   <= '0';
-                temp_reg_rw             <= '1';
-                y_reg_rw                <= '0';
-                e2_reg_rw               <= '0';
-                e1_reg_rw               <= '0';
-                s_reg_rw                <= '0';
-                r_reg_rw                <= '0';
-                a_reg_rw                <= '0';
-                uniform_gen             <= '0';
-                uniform_reset           <= '0';
-                gaussian_gen            <= '0';
-                gaussian_reset          <= '0';
-                rlwe_core_poly1_sel     <= "000";
-                rlwe_core_poly2_sel     <= "000";
-                rlwe_core_mode          <= "000";
-                rlwe_core_start         <= '0';
-                rlwe_core_reset         <= '1';
-                encrypted_msg1_reg_rw   <= '0';
-                encrypted_msg2_reg_rw   <= '0';
-                encrypted_msg_input_sel <= '0';
-                decrypted_msg_reg_rw  <= '0';
-                a_reg_input_sel         <= "00";
-                s_reg_input_sel         <= '0';
-                y_reg_input_sel         <= '0';
-            when final_encrypt_calc =>
-                valid                   <= '0';
-                temp_reg_rw             <= '0';
-                y_reg_rw                <= '0';
-                e2_reg_rw               <= '0';
-                e1_reg_rw               <= '0';
-                s_reg_rw                <= '0';
-                r_reg_rw                <= '0';
-                a_reg_rw                <= '0';
-                uniform_gen             <= '0';
-                uniform_reset           <= '0';
-                gaussian_gen            <= '0';
-                gaussian_reset          <= '0';
-                rlwe_core_poly1_sel     <= "001";
-                rlwe_core_poly2_sel     <= "100";
-                rlwe_core_mode          <= "000";
-                rlwe_core_start         <= '1';
-                rlwe_core_reset         <= '0';
-                encrypted_msg1_reg_rw   <= '0';
-                encrypted_msg2_reg_rw   <= '0';
-                encrypted_msg_input_sel <= '0';
-                decrypted_msg_reg_rw  <= '0';
-                a_reg_input_sel         <= "00";
-                s_reg_input_sel         <= '0';
-                y_reg_input_sel         <= '0';
-            when encrypt2_write =>
-                valid                   <= '0';
-                temp_reg_rw             <= '0';
-                y_reg_rw                <= '0';
-                e2_reg_rw               <= '0';
-                e1_reg_rw               <= '0';
-                s_reg_rw                <= '0';
-                r_reg_rw                <= '0';
-                a_reg_rw                <= '0';
-                uniform_gen             <= '0';
-                uniform_reset           <= '0';
-                gaussian_gen            <= '0';
-                gaussian_reset          <= '0';
-                rlwe_core_poly1_sel     <= "000";
-                rlwe_core_poly2_sel     <= "000";
-                rlwe_core_mode          <= "000";
-                rlwe_core_start         <= '0';
-                rlwe_core_reset         <= '0';
-                encrypted_msg1_reg_rw   <= '0';
-                encrypted_msg2_reg_rw   <= '1';
-                encrypted_msg_input_sel <= '1';
-                decrypted_msg_reg_rw  <= '0';
-                a_reg_input_sel         <= "00";
-                s_reg_input_sel         <= '0';
-                y_reg_input_sel         <= '0';
-            when decrypt_init =>
-                valid                   <= '0';
-                temp_reg_rw             <= '0';
-                y_reg_rw                <= '0';
-                e2_reg_rw               <= '0';
-                e1_reg_rw               <= '0';
-                s_reg_rw                <= '1';
-                r_reg_rw                <= '0';
-                a_reg_rw                <= '0';
-                uniform_gen             <= '0';
-                uniform_reset           <= '0';
-                gaussian_gen            <= '0';
-                gaussian_reset          <= '0';
-                rlwe_core_poly1_sel     <= "000";
-                rlwe_core_poly2_sel     <= "000";
-                rlwe_core_mode          <= "000";
-                rlwe_core_start         <= '0';
-                rlwe_core_reset         <= '1';
-                encrypted_msg1_reg_rw   <= '1';
-                encrypted_msg2_reg_rw   <= '1';
-                encrypted_msg_input_sel <= '0';
-                decrypted_msg_reg_rw    <= '0';
-                a_reg_input_sel         <= "00";
-                s_reg_input_sel         <= '1';
-                y_reg_input_sel         <= '0';
-            when decrypt_1 =>
-                valid                   <= '0';
-                temp_reg_rw             <= '0';
-                y_reg_rw                <= '0';
-                e2_reg_rw               <= '0';
-                e1_reg_rw               <= '0';
-                s_reg_rw                <= '0';
-                r_reg_rw                <= '0';
-                a_reg_rw                <= '0';
-                uniform_gen             <= '0';
-                uniform_reset           <= '0';
-                gaussian_gen            <= '0';
-                gaussian_reset          <= '0';
-                rlwe_core_poly1_sel     <= "011";
-                rlwe_core_poly2_sel     <= "000";
-                rlwe_core_mode          <= "001";
-                rlwe_core_start         <= '1';
-                rlwe_core_reset         <= '0';
-                encrypted_msg1_reg_rw   <= '0';
-                encrypted_msg2_reg_rw   <= '0';
-                encrypted_msg_input_sel <= '0';
-                decrypted_msg_reg_rw    <= '0';
-                a_reg_input_sel         <= "00";
-                s_reg_input_sel         <= '0';
-                y_reg_input_sel         <= '0';
-            when decrypt_1_write =>
-                valid                   <= '0';
-                temp_reg_rw             <= '1';
-                y_reg_rw                <= '0';
-                e2_reg_rw               <= '0';
-                e1_reg_rw               <= '0';
-                s_reg_rw                <= '0';
-                r_reg_rw                <= '0';
-                a_reg_rw                <= '0';
-                uniform_gen             <= '0';
-                uniform_reset           <= '0';
-                gaussian_gen            <= '0';
-                gaussian_reset          <= '0';
-                rlwe_core_poly1_sel     <= "000";
-                rlwe_core_poly2_sel     <= "000";
-                rlwe_core_mode          <= "001";
-                rlwe_core_start         <= '0';
-                rlwe_core_reset         <= '1';
-                encrypted_msg1_reg_rw   <= '0';
-                encrypted_msg2_reg_rw   <= '0';
-                encrypted_msg_input_sel <= '0';
-                decrypted_msg_reg_rw    <= '0';
-                a_reg_input_sel         <= "00";
-                s_reg_input_sel         <= '0';
-                y_reg_input_sel         <= '0';
-            when negate_decrypt_1 =>
-                valid                   <= '0';
-                temp_reg_rw             <= '0';
-                y_reg_rw                <= '0';
-                e2_reg_rw               <= '0';
-                e1_reg_rw               <= '0';
-                s_reg_rw                <= '0';
-                r_reg_rw                <= '0';
-                a_reg_rw                <= '0';
-                uniform_gen             <= '0';
-                uniform_reset           <= '0';
-                gaussian_gen            <= '0';
-                gaussian_reset          <= '0';
-                rlwe_core_poly1_sel     <= "001";
-                rlwe_core_poly2_sel     <= "000";
-                rlwe_core_mode          <= "010";
-                rlwe_core_start         <= '1';
-                rlwe_core_reset         <= '0';
-                encrypted_msg1_reg_rw   <= '0';
-                encrypted_msg2_reg_rw   <= '0';
-                encrypted_msg_input_sel <= '0';
-                decrypted_msg_reg_rw    <= '0';
-                a_reg_input_sel         <= "00";
-                s_reg_input_sel         <= '0';
-                y_reg_input_sel         <= '0';
-            when negate_decrypt_1_write =>
-                valid                   <= '0';
-                temp_reg_rw             <= '1';
-                y_reg_rw                <= '0';
-                e2_reg_rw               <= '0';
-                e1_reg_rw               <= '0';
-                s_reg_rw                <= '0';
-                r_reg_rw                <= '0';
-                a_reg_rw                <= '0';
-                uniform_gen             <= '0';
-                uniform_reset           <= '0';
-                gaussian_gen            <= '0';
-                gaussian_reset          <= '0';
-                rlwe_core_poly1_sel     <= "000";
-                rlwe_core_poly2_sel     <= "000";
-                rlwe_core_mode          <= "010";
-                rlwe_core_start         <= '0';
-                rlwe_core_reset         <= '1';
-                encrypted_msg1_reg_rw   <= '0';
-                encrypted_msg2_reg_rw   <= '0';
-                encrypted_msg_input_sel <= '0';
-                decrypted_msg_reg_rw    <= '0';
-                a_reg_input_sel         <= "00";
-                s_reg_input_sel         <= '0';
-                y_reg_input_sel         <= '0';
-            when decrypt_2_minus_decrypt_1 =>
-                valid                   <= '0';
-                temp_reg_rw             <= '0';
-                y_reg_rw                <= '0';
-                e2_reg_rw               <= '0';
-                e1_reg_rw               <= '0';
-                s_reg_rw                <= '0';
-                r_reg_rw                <= '0';
-                a_reg_rw                <= '0';
-                uniform_gen             <= '0';
-                uniform_reset           <= '0';
-                gaussian_gen            <= '0';
-                gaussian_reset          <= '0';
-                rlwe_core_poly1_sel     <= "001";
-                rlwe_core_poly2_sel     <= "101";
-                rlwe_core_mode          <= "000";
-                rlwe_core_start         <= '1';
-                rlwe_core_reset         <= '0';
-                encrypted_msg1_reg_rw   <= '0';
-                encrypted_msg2_reg_rw   <= '0';
-                encrypted_msg_input_sel <= '0';
-                decrypted_msg_reg_rw    <= '0';
-                a_reg_input_sel         <= "00";
-                s_reg_input_sel         <= '0';
-                y_reg_input_sel         <= '0';
-            when decrypt_2_minus_decrypt_1_write =>
-                valid                   <= '0';
-                temp_reg_rw             <= '0';
-                y_reg_rw                <= '0';
-                e2_reg_rw               <= '0';
-                e1_reg_rw               <= '0';
-                s_reg_rw                <= '0';
-                r_reg_rw                <= '0';
-                a_reg_rw                <= '0';
-                uniform_gen             <= '0';
-                uniform_reset           <= '0';
-                gaussian_gen            <= '0';
-                gaussian_reset          <= '0';
-                rlwe_core_poly1_sel     <= "000";
-                rlwe_core_poly2_sel     <= "000";
-                rlwe_core_mode          <= "000";
-                rlwe_core_start         <= '0';
-                rlwe_core_reset         <= '1';
-                encrypted_msg1_reg_rw   <= '0';
-                encrypted_msg2_reg_rw   <= '0';
-                encrypted_msg_input_sel <= '0';
-                decrypted_msg_reg_rw    <= '1';
-                a_reg_input_sel         <= "00";
-                s_reg_input_sel         <= '0';
-                y_reg_input_sel         <= '0';
-            when decode_decrypt =>
-                valid                   <= '0';
-                temp_reg_rw             <= '0';
-                y_reg_rw                <= '0';
-                e2_reg_rw               <= '0';
-                e1_reg_rw               <= '0';
-                s_reg_rw                <= '0';
-                r_reg_rw                <= '0';
-                a_reg_rw                <= '0';
-                uniform_gen             <= '0';
-                uniform_reset           <= '0';
-                gaussian_gen            <= '0';
-                gaussian_reset          <= '0';
-                rlwe_core_poly1_sel     <= "000";
-                rlwe_core_poly2_sel     <= "100";
-                rlwe_core_mode          <= "100";
-                rlwe_core_start         <= '1';
-                rlwe_core_reset         <= '0';
-                encrypted_msg1_reg_rw   <= '0';
-                encrypted_msg2_reg_rw   <= '0';
-                encrypted_msg_input_sel <= '0';
-                decrypted_msg_reg_rw    <= '0';
-                a_reg_input_sel         <= "00";
-                s_reg_input_sel         <= '0';
-                y_reg_input_sel         <= '0';
-            when decode_write =>
-                valid                   <= '0';
-                temp_reg_rw             <= '0';
-                y_reg_rw                <= '0';
-                e2_reg_rw               <= '0';
-                e1_reg_rw               <= '0';
-                s_reg_rw                <= '0';
-                r_reg_rw                <= '0';
-                a_reg_rw                <= '0';
-                uniform_gen             <= '0';
-                uniform_reset           <= '0';
-                gaussian_gen            <= '0';
-                gaussian_reset          <= '0';
-                rlwe_core_poly1_sel     <= "000";
-                rlwe_core_poly2_sel     <= "000";
-                rlwe_core_mode          <= "100";
-                rlwe_core_start         <= '0';
-                rlwe_core_reset         <= '1';
-                encrypted_msg1_reg_rw   <= '0';
-                encrypted_msg2_reg_rw   <= '0';
-                encrypted_msg_input_sel <= '0';
-                decrypted_msg_reg_rw    <= '1';
-                a_reg_input_sel         <= "00";
-                s_reg_input_sel         <= '0';
-                y_reg_input_sel         <= '0';
+                output_test             <= '0';
             when others =>
                 valid                   <= '0';
-                temp_reg_rw             <= '0';
-                y_reg_rw                <= '0';
-                e2_reg_rw               <= '0';
-                e1_reg_rw               <= '0';
-                s_reg_rw                <= '0';
-                r_reg_rw                <= '0';
-                a_reg_rw                <= '0';
+                reg_file_sel_0          <= "0000";
+                reg_file_sel_1          <= "0000";
+                reg_file_rw_0           <= '0';
+                reg_file_rw_1           <= '0';
+                reg_file_in_0_sel       <= '0';
+                reg_file_in_1_sel       <= '0';
                 uniform_gen             <= '0';
-                uniform_reset           <= '0';
+                uniform_reset           <= '1';
                 gaussian_gen            <= '0';
-                gaussian_reset          <= '0';
-                rlwe_core_poly1_sel     <= "000";
-                rlwe_core_poly2_sel     <= "000";
+                gaussian_reset          <= '1';
+                rlwe_core_poly_1_sel    <= '0';
                 rlwe_core_mode          <= "000";
                 rlwe_core_start         <= '0';
-                rlwe_core_reset         <= '0';
-                encrypted_msg1_reg_rw   <= '0';
-                encrypted_msg2_reg_rw   <= '0';
-                encrypted_msg_input_sel <= '0';
-                decrypted_msg_reg_rw    <= '0';
-                a_reg_input_sel         <= "00";
-                s_reg_input_sel         <= '0';
-                y_reg_input_sel         <= '0';
+                rlwe_core_reset         <= '1';
+                output_test             <= '0';
         end case;
     end process;
 

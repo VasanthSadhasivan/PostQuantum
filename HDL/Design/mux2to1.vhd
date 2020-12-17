@@ -33,8 +33,8 @@ use work.my_types.all;
 --use UNISIM.VComponents.all;
 
 entity mux2to1 is
-    Port (input1    : in port_t;
-          input2    : in port_t;
+    Port (input_0    : in port_t;
+          input_1    : in port_t;
           sel       : in std_logic;
           output    : out port_t );
 end mux2to1;
@@ -42,12 +42,12 @@ end mux2to1;
 architecture Behavioral of mux2to1 is
 
 begin
-    main: process(sel, input1, input2)
+    main: process(sel, input_0, input_1)
     begin
         if sel = '0' then
-            output <= input1;
+            output <= input_0;
         else
-            output <= input2;
+            output <= input_1;
         end if;
     end process;
 end Behavioral;

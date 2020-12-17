@@ -35,7 +35,7 @@ use work.my_types.all;
 
 entity decoder is
     Port (clk     : in std_logic;
-          poly1   : in port_t;
+          poly_0   : in port_t;
           output  : out port_t);
 end decoder;
 
@@ -47,7 +47,7 @@ begin
         process(clk)
         begin
             if rising_edge(clk) then
-                if to_integer(poly1(i)) > MODULO/4 then
+                if to_integer(poly_0(i)) > MODULO/4 then
                     output(i) <= to_unsigned(1, BIT_WIDTH);
                 else
                     output(i) <= to_unsigned(0, BIT_WIDTH);

@@ -17,8 +17,8 @@ architecture Behavioral of rlwe_core_sim is
               start : in std_logic;
               reset : in std_logic;
               mode  : in std_logic_vector(1 downto 0);
-              poly1 : in port_t;
-              poly2 : in port_t;
+              poly_0 : in port_t;
+              poly_1 : in port_t;
               output: out port_t;
               valid : out std_logic
                );
@@ -32,8 +32,8 @@ architecture Behavioral of rlwe_core_sim is
     signal valid        : std_logic;
     signal reset        : std_logic := '0';
     signal mode         : std_logic_vector(1 downto 0) := "10";
-    signal poly1        : port_t;
-    signal poly2        : port_t;
+    signal poly_0        : port_t;
+    signal poly_1        : port_t;
     signal output       : port_t;
     signal right_output : port_t;
     
@@ -46,8 +46,8 @@ architecture Behavioral of rlwe_core_sim is
             start   => start,
             reset   => reset,
             mode    => mode,
-            poly1   => poly1,
-            poly2   => poly2,
+            poly_0   => poly_0,
+            poly_1   => poly_1,
             output  => output,
             valid   => valid
         );
@@ -77,8 +77,8 @@ architecture Behavioral of rlwe_core_sim is
                     hread(input_line, input_vector1);
                     hread(input_line, input_vector2);
                     hread(output_line, output_vector);
-                    poly1(i)        <= input_vector1;
-                    poly2(i)        <= input_vector2;
+                    poly_0(i)        <= input_vector1;
+                    poly_1(i)        <= input_vector2;
                     right_output(i) <= output_vector;
                     report "Input Vector 1: " & to_hstring(input_vector1);
                     report "Input Vector 2: " & to_hstring(input_vector1);

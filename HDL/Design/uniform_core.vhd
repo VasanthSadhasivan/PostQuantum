@@ -35,6 +35,7 @@ use work.my_types.all;
 entity uniform_core is
     Port (clk   : in std_logic;
           gen   : in std_logic;
+          reset : in std_logic;
           valid : out std_logic;
           output: out port_t );
 end uniform_core;
@@ -47,6 +48,12 @@ begin
         output(i) <= to_unsigned(i, BIT_WIDTH);
     end generate main;
 
-    valid <= '1';
-
+    reset_process : process(reset)
+    begin
+        if reset = '1' then
+            valid <= '0';
+        else
+            valid <= '1';
+        end if;
+    end process;
 end Behavioral;

@@ -9,8 +9,8 @@ use work.my_types.all;
 entity poly_mult is
     Port (clk     : in std_logic;
           reset   : in std_logic; 
-          poly1   : in port_t;
-          poly2   : in port_t;
+          poly_0   : in port_t;
+          poly_1   : in port_t;
           start   : in std_logic;
           output  : out port_t;
           valid   : out std_logic);
@@ -76,8 +76,8 @@ component ROM_phi_inv is
          phi_inv : out port_t);
 end component;
 
-signal poly1_reverse    :   port_t;
-signal poly2_reverse    :   port_t;
+signal poly_0_reverse    :   port_t;
+signal poly_1_reverse    :   port_t;
 signal output_unreverse :   port_t;
 signal phi      :   port_t;
 signal phi_inv  :   port_t;
@@ -118,14 +118,14 @@ begin
     
     input1_coeff_reverse: coeff_reverse
     port map (
-        input => poly1,
-        output => poly1_reverse
+        input => poly_0,
+        output => poly_0_reverse
     );
     
     input2_coeff_reverse: coeff_reverse
     port map (
-        input => poly2,
-        output => poly2_reverse
+        input => poly_1,
+        output => poly_1_reverse
     );
     
     output_coeff_reverse: coeff_reverse
@@ -146,7 +146,7 @@ begin
     
     input_multiply_1: pointwise_multiplier
     port map (
-        in1 => poly1_reverse,
+        in1 => poly_0_reverse,
         in2 => phi,
         clk => clk,
         output => in1_phi
@@ -154,7 +154,7 @@ begin
     
     input_multiply_2: pointwise_multiplier
     port map (
-        in1 => poly2_reverse,
+        in1 => poly_1_reverse,
         in2 => phi,
         clk => clk,
         output => in2_phi

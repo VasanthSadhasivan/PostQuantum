@@ -15,8 +15,8 @@ architecture Behavioral of poly_mult_sim is
     component poly_mult is
         Port (clk     : in std_logic;
               reset   : in std_logic; 
-              poly1   : in port_t;
-              poly2   : in port_t;
+              poly_0   : in port_t;
+              poly_1   : in port_t;
               start   : in std_logic;
               output  : out port_t;
               valid   : out std_logic);
@@ -41,8 +41,8 @@ architecture Behavioral of poly_mult_sim is
         multiplier: poly_mult PORT MAP (
             clk => CLK,
             reset => reset,
-            poly1 => input1,
-            poly2 => input2,
+            poly_0 => input1,
+            poly_1 => input2,
             start => start,
             output => output,
             valid => valid

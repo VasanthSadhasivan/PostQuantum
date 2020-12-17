@@ -35,7 +35,7 @@ use work.my_types.all;
 entity reg is
     Port ( clk : in STD_LOGIC;
            rw : in STD_LOGIC;
-           input : in port_t;
+           input : in port_t; 
            output : out port_t);
 end reg;
 

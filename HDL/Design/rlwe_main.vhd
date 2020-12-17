@@ -32,66 +32,56 @@ use work.my_types.all;
 --library UNISIM;
 --use UNISIM.VComponents.all;
 
+/*
+    instruction format: _ _ _ | _ _ _ _ | _ _ _ _ | _ _ | _ _ _ _
+                         op_1    rx_1       ry     op_2    rx_2
+
+*/
+
 entity rlwe_main is
-    Port (clk   : in std_logic;
-          mode  : in std_logic_vector(1 downto 0);
-          start : in std_logic;
-          reset : in std_logic;
-          encrypted_data_in1    : in port_t;
-          encrypted_data_in2    : in port_t;
-          decrypted_data_in   : in port_t;
-          public_key_in1           : in port_t;
-          public_key_in2           : in port_t;
-          private_key_in           : in port_t;
-          public_key_out1          : out port_t;
-          public_key_out2          : out port_t;
-          private_key_out          : out port_t;
-          valid : out std_logic;
-          encrypted_data_out1   : out port_t;
-          encrypted_data_out2   : out port_t;
-          decrypted_data_out  : out port_t);
+    Port (clk           : in std_logic;
+          start         : in std_logic;
+          reset         : in std_logic;
+          instruction   : in instruction_op_t;
+          input         : in port_t;
+          output        : out port_t;
+          valid         : out std_logic;
+          output_test   : out std_logic);
 end rlwe_main;
 
 architecture Behavioral of rlwe_main is
 
 component main_control_unit is
     Port (clk                       : in std_logic;
-          mode                      : in std_logic_vector(1 downto 0);
           start                     : in std_logic;
           reset                     : in std_logic;
-          valid                     : out std_logic;
-          temp_reg_rw               : out std_logic;
-          y_reg_rw                  : out std_logic;
-          e2_reg_rw                 : out std_logic;
-          e1_reg_rw                 : out std_logic;
-          s_reg_rw                  : out std_logic;
-          r_reg_rw                  : out std_logic;
-          a_reg_rw                  : out std_logic;
+          valid                     : out std_logic; 
+          instruction               : in instruction_op_t; 
+          reg_file_sel_0            : out std_logic_vector(3 downto 0);
+          reg_file_sel_1            : out std_logic_vector(3 downto 0);
+          reg_file_rw_0             : out std_logic;
+          reg_file_rw_1             : out std_logic;
+          reg_file_in_0_sel         : out std_logic;
+          reg_file_in_1_sel         : out std_logic;
           uniform_gen               : out std_logic;
-          uniform_valid             : in std_logic;
           uniform_reset             : out std_logic;
+          uniform_valid             : in std_logic;
           gaussian_gen              : out std_logic;
-          gaussian_valid            : in std_logic;
           gaussian_reset            : out std_logic;
-          rlwe_core_poly1_sel       : out std_logic_vector(2 downto 0);
-          rlwe_core_poly2_sel       : out std_logic_vector(2 downto 0);
+          gaussian_valid            : in std_logic;
+          rlwe_core_poly_1_sel      : out std_logic;
           rlwe_core_mode            : out std_logic_vector(2 downto 0);
           rlwe_core_start           : out std_logic;
           rlwe_core_reset           : out std_logic;
           rlwe_core_valid           : in std_logic;
-          encrypted_msg1_reg_rw     : out std_logic;
-          encrypted_msg2_reg_rw     : out std_logic;
-          encrypted_msg_input_sel   : out std_logic;
-          decrypted_msg_reg_rw     : out std_logic;
-          a_reg_input_sel       : out std_logic_vector(1 downto 0);
-          s_reg_input_sel       : out std_logic;
-          y_reg_input_sel       : out std_logic
+          output_test               : out std_logic
           );
 end component;
 
 component uniform_core is
     Port (clk       : in std_logic;
           gen       : in std_logic;
+          reset     : in std_logic;
           valid     : out std_logic;
           output    : out port_t );
 end component;
@@ -99,6 +89,7 @@ end component;
 component gaussian_core is
     Port (clk           : in std_logic;
           gen           : in std_logic;
+          reset         : in std_logic;
           valid         : out std_logic;
           output        : out port_t );
 end component;
@@ -108,176 +99,109 @@ component rlwe_core is
           start     : in std_logic;
           reset     : in std_logic;
           mode      : in std_logic_vector(2 downto 0);
-          poly1     : in port_t;
-          poly2     : in port_t;
+          poly_0     : in port_t;
+          poly_1     : in port_t;
           output    : out port_t;
           valid     : out std_logic
            );
 end component;
 
-component reg is
-    Port ( clk : in STD_LOGIC;
-           rw : in STD_LOGIC;
-           input : in port_t;
-           output : out port_t);
+component reg_file is
+    Port ( clk          : in STD_LOGIC;
+           in_value_0   : in port_t;
+           in_value_1   : in port_t;
+           reg_file_sel_0    : in STD_LOGIC_VECTOR(3 downto 0);
+           reg_file_sel_1    : in STD_LOGIC_VECTOR(3 downto 0);
+           rw_0         : in STD_LOGIC;
+           rw_1         : in STD_LOGIC;
+           out_0        : out port_t;
+           out_1        : out port_t);
 end component;
 
 component mux2to1 is
-    Port (input1    : in port_t;
-          input2    : in port_t;
+    Port (input_0    : in port_t;
+          input_1    : in port_t;
           sel       : in std_logic;
           output    : out port_t );
 end component;
 
-component mux3to1 is
-    Port (input1    : in port_t;
-          input2    : in port_t;
-          input3    : in port_t;
-          sel       : in std_logic_vector(1 downto 0);
-          output    : out port_t );
-end component;
+signal reg_file_in_0 : port_t;
+signal reg_file_in_1 : port_t;
+signal reg_file_out_0 : port_t;
+signal reg_file_out_1 : port_t;
+signal reg_file_sel_0 : std_logic_vector(3 downto 0);
+signal reg_file_sel_1 : std_logic_vector(3 downto 0);
+signal reg_file_rw_0 : std_logic;
+signal reg_file_rw_1 : std_logic;
+signal reg_file_in_0_sel : std_logic;
+signal reg_file_in_1_sel : std_logic;
 
-component mux5to1 is
-    Port (input1    : in port_t;
-          input2    : in port_t;
-          input3    : in port_t;
-          input4    : in port_t;
-          input5    : in port_t;
-          sel       : in std_logic_vector(2 downto 0);
-          output    : out port_t );
-end component;
-
-
-component mux7to1 is
-    Port (input1    : in port_t;
-          input2    : in port_t;
-          input3    : in port_t;
-          input4    : in port_t;
-          input5    : in port_t;
-          input6    : in port_t;
-          input7    : in port_t;
-          sel       : in std_logic_vector(2 downto 0);
-          output    : out port_t );
-end component;
-
-
-signal temp_reg_rw : std_logic;
-signal y_reg_rw : std_logic;
-signal e2_reg_rw : std_logic;
-signal e1_reg_rw : std_logic;
-signal s_reg_rw : std_logic;
-signal r_reg_rw : std_logic;
-signal a_reg_rw : std_logic;
 signal uniform_gen : std_logic;
-signal uniform_valid : std_logic;
 signal uniform_reset : std_logic;
+signal uniform_valid : std_logic;
+signal uniform_out : port_t;
+
 signal gaussian_gen : std_logic;
-signal gaussian_valid : std_logic;
 signal gaussian_reset : std_logic;
-signal rlwe_core_poly1_sel : std_logic_vector(2 downto 0);
-signal rlwe_core_poly2_sel : std_logic_vector(2 downto 0);
+signal gaussian_valid : std_logic;
+signal gaussian_out : port_t;
+
+signal rlwe_core_poly_0 : port_t;
+signal rlwe_core_poly_1 : port_t;
+signal rlwe_core_valid : std_logic;
+signal rlwe_core_out : port_t;
 signal rlwe_core_mode : std_logic_vector(2 downto 0);
 signal rlwe_core_start : std_logic;
 signal rlwe_core_reset : std_logic;
-signal rlwe_core_valid : std_logic;
-signal encrypted_msg1_reg_rw : std_logic;
-signal encrypted_msg2_reg_rw : std_logic;
-signal encrypted_msg_input_sel : std_logic;
-signal decrypted_msg_reg_rw : std_logic;
-signal a_reg_input_sel : std_logic_vector(1 downto 0);
-signal s_reg_input_sel : std_logic;
-signal y_reg_input_sel : std_logic;
-
-signal uniform_output : port_t;
-signal gaussian_output : port_t;
-
-signal rlwe_core_poly1 : port_t;
-signal rlwe_core_poly2 : port_t;
-
-signal rlwe_core_output             : port_t;
-signal q_2_ROM_out                  : port_t;
-signal a_reg_out                    : port_t;
-signal temp_reg_out                 : port_t;
-signal y_reg_out                    : port_t;
-signal encrypted_msg1_reg_out       : port_t;
-signal s_reg_out                    : port_t;
-signal e1_reg_out                   : port_t;
-signal r_reg_out                    : port_t;
-signal e2_reg_out                   : port_t;
-signal decrypted_msg_reg_out      : port_t;
-signal decrypted_msg_reg_input    : port_t;
-signal encrypted_msg2_reg_out       : port_t;
-signal encrypted_msg1_reg_input     : port_t;
-signal encrypted_msg2_reg_input     : port_t;
-signal a_reg_input                  : port_t;
-signal s_reg_input                  : port_t;
-signal y_reg_input                  : port_t;
-
+signal rlwe_core_poly_1_sel : std_logic;
 
 begin
-    q_2_ROM_out <= initialize_q_2_ROM;
-    
-    public_key_out1 <= a_reg_out;
-    public_key_out2 <= y_reg_out;
 
-    private_key_out <= s_reg_out;
-
-    encrypted_data_out1 <= encrypted_msg1_reg_out;
-    encrypted_data_out2 <= encrypted_msg2_reg_out;
-
-    decrypted_data_out <= decrypted_msg_reg_out;
-    
-    decrypted_msg_reg_input <= rlwe_core_output;
+    output <= rlwe_core_out;
 
     control_unit: main_control_unit
     port map (
         clk                     => clk,
-        mode                    => mode,
         start                   => start,
         reset                   => reset,
         valid                   => valid,
-        temp_reg_rw             => temp_reg_rw,
-        y_reg_rw                => y_reg_rw,
-        e2_reg_rw               => e2_reg_rw,
-        e1_reg_rw               => e1_reg_rw,
-        s_reg_rw                => s_reg_rw,
-        r_reg_rw                => r_reg_rw,
-        a_reg_rw                => a_reg_rw,
+        instruction             => instruction,
+        reg_file_sel_0          => reg_file_sel_0,
+        reg_file_sel_1          => reg_file_sel_1,
+        reg_file_rw_0           => reg_file_rw_0,
+        reg_file_rw_1           => reg_file_rw_1,
+        reg_file_in_0_sel       => reg_file_in_0_sel,
+        reg_file_in_1_sel       => reg_file_in_1_sel,
         uniform_gen             => uniform_gen,
-        uniform_valid           => uniform_valid,
         uniform_reset           => uniform_reset,
+        uniform_valid           => uniform_valid,
         gaussian_gen            => gaussian_gen,
-        gaussian_valid          => gaussian_valid,
         gaussian_reset          => gaussian_reset,
-        rlwe_core_poly1_sel     => rlwe_core_poly1_sel,
-        rlwe_core_poly2_sel     => rlwe_core_poly2_sel,
+        gaussian_valid          => gaussian_valid,
+        rlwe_core_poly_1_sel    => rlwe_core_poly_1_sel,
         rlwe_core_mode          => rlwe_core_mode,
         rlwe_core_start         => rlwe_core_start,
         rlwe_core_reset         => rlwe_core_reset,
         rlwe_core_valid         => rlwe_core_valid,
-        encrypted_msg1_reg_rw   => encrypted_msg1_reg_rw,
-        encrypted_msg2_reg_rw   => encrypted_msg2_reg_rw,
-        encrypted_msg_input_sel => encrypted_msg_input_sel,
-        decrypted_msg_reg_rw  => decrypted_msg_reg_rw,
-        a_reg_input_sel         => a_reg_input_sel,
-        s_reg_input_sel         => s_reg_input_sel,
-        y_reg_input_sel         => y_reg_input_sel
+        output_test             => output_test
     );
 
     uniform_rng: uniform_core
     port map (
         clk     => clk,
         gen     => uniform_gen,
+        reset   => uniform_reset,
         valid   => uniform_valid,
-        output  => uniform_output
+        output  => uniform_out
     );
 
     gaussian_rng: gaussian_core
     port map (
         clk         => clk,
         gen         => gaussian_gen,
+        reset       => gaussian_reset,
         valid       => gaussian_valid,
-        output      => gaussian_output
+        output      => gaussian_out
     );
     
     rlwe_logical_unit: rlwe_core
@@ -286,153 +210,50 @@ begin
         start   => rlwe_core_start,
         reset   => rlwe_core_reset,
         mode    => rlwe_core_mode,
-        poly1   => rlwe_core_poly1,
-        poly2   => rlwe_core_poly2,
-        output  => rlwe_core_output,
+        poly_0   => rlwe_core_poly_0,
+        poly_1   => rlwe_core_poly_1,
+        output  => rlwe_core_out,
         valid   => rlwe_core_valid
     );
     
-    rlwe_core_poly1_mux: mux5to1
-    port map(input1 => a_reg_out,
-             input2 => temp_reg_out,
-             input3 => y_reg_out,
-             input4 => encrypted_msg1_reg_out,
-             input5 => decrypted_data_in,
-             sel    => rlwe_core_poly1_sel,
-             output => rlwe_core_poly1
-    );    
-    
-    
-    rlwe_core_poly2_mux: mux7to1
-    port map(input1 => s_reg_out,
-             input2 => e1_reg_out,
-             input3 => r_reg_out,
-             input4 => e2_reg_out,
-             input5 => decrypted_msg_reg_out,
-             input6 => encrypted_msg2_reg_out,
-             input7 => q_2_ROM_out,
-             sel    => rlwe_core_poly2_sel,
-             output => rlwe_core_poly2
-    );    
-    
-    encrypted_msg_reg_input1_mux: mux2to1
-    port map(input1 => encrypted_data_in1,
-             input2 => rlwe_core_output,
-             sel    => encrypted_msg_input_sel,
-             output => encrypted_msg1_reg_input
-        
-    );
-    
-    encrypted_msg_reg_input2_mux: mux2to1
-    port map(input1 => encrypted_data_in2,
-             input2 => rlwe_core_output,
-             sel    => encrypted_msg_input_sel,
-             output => encrypted_msg2_reg_input
-        
-    );
-    
-    a_reg_input_mux: mux3to1
-    port map(input1 => uniform_output,
-             input2 => public_key_in1,
-             input3 => rlwe_core_output,
-             sel    => a_reg_input_sel,
-             output => a_reg_input
-        
-    );
-    
-    s_reg_input_mux: mux2to1
-    port map(input1 => gaussian_output,
-             input2 => private_key_in,
-             sel    => s_reg_input_sel,
-             output => s_reg_input
-        
-    );
-    
-    y_reg_input_mux: mux2to1
-    port map(input1 => rlwe_core_output,
-             input2 => public_key_in2,
-             sel    => y_reg_input_sel,
-             output => y_reg_input
-        
-    );
-    
-    temp_reg : reg
+    registers: reg_file
     port map (
-        clk     => clk,
-        rw      => temp_reg_rw,
-        input   => rlwe_core_output,
-        output  => temp_reg_out
+        clk         => clk,
+        in_value_0  => reg_file_in_0,
+        in_value_1  => reg_file_in_1,
+        reg_file_sel_0   => reg_file_sel_0,
+        reg_file_sel_1   => reg_file_sel_1,
+        rw_0        => reg_file_rw_0,
+        rw_1        => reg_file_rw_1,
+        out_0       => reg_file_out_0,
+        out_1       => reg_file_out_1
     );
     
-    y_reg : reg
+    reg_file_in_0_mux: mux2to1
     port map (
-        clk     => clk,
-        rw      => y_reg_rw,
-        input   => y_reg_input,
-        output  => y_reg_out
+        input_0  => input,
+        input_1  => rlwe_core_out,
+        sel     => reg_file_in_0_sel,
+        output  => reg_file_in_0
     );
     
-    e2_reg : reg
+    reg_file_in_1_mux: mux2to1
     port map (
-        clk     => clk,
-        rw      => e2_reg_rw,
-        input   => gaussian_output,
-        output  => e2_reg_out
+        input_0  => uniform_out,
+        input_1  => gaussian_out,
+        sel     => reg_file_in_1_sel,
+        output  => reg_file_in_1
     );
     
-    e1_reg : reg
-    port map (
-        clk     => clk,
-        rw      => e1_reg_rw,
-        input   => gaussian_output,
-        output  => e1_reg_out
-    );
-    
-    s_reg : reg
-    port map (
-        clk     => clk,
-        rw      => s_reg_rw,
-        input   => s_reg_input,
-        output  => s_reg_out
-    );
-    
-    r_reg : reg
-    port map (
-        clk     => clk,
-        rw      => r_reg_rw,
-        input   => gaussian_output,
-        output  => r_reg_out
-    );
-    
-    a_reg : reg
-    port map (
-        clk     => clk,
-        rw      => a_reg_rw,
-        input   => a_reg_input,
-        output  => a_reg_out
-    );
-    
-    encrypted_msg1_reg : reg
-    port map (
-        clk     => clk,
-        rw      => encrypted_msg1_reg_rw,
-        input   => encrypted_msg1_reg_input,
-        output  => encrypted_msg1_reg_out
-    );
 
-    encrypted_msg2_reg : reg
+    rlwe_core_poly_1_mux: mux2to1
     port map (
-        clk     => clk,
-        rw      => encrypted_msg2_reg_rw,
-        input   => encrypted_msg2_reg_input,
-        output  => encrypted_msg2_reg_out
+        input_0  => input,
+        input_1  => reg_file_out_0,
+        sel     => rlwe_core_poly_1_sel,
+        output  => rlwe_core_poly_1
     );
-
-    decrypted_msg_reg : reg
-    port map (
-        clk     => clk,
-        rw      => decrypted_msg_reg_rw,
-        input   => decrypted_msg_reg_input,
-        output  => decrypted_msg_reg_out
-    );
+    
+    rlwe_core_poly_0 <= reg_file_out_1;
+    
 end Behavioral;
