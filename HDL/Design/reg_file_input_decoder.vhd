@@ -53,7 +53,7 @@ begin
         if (reg_file_sel_0 = index and write_0 = '1') then
             output  <= in_value_0;
             write  <= '1';
-        elsif (reg_file_sel_1 = "0000" and write_1 = '1') then
+        elsif (reg_file_sel_1 = index and write_1 = '1') then
             output  <= in_value_1;
             write  <= '1';
         else
