@@ -41,7 +41,6 @@ entity rlwe_core_control_unit is
           valid             : out std_logic;
           poly_mult_reset   : out std_logic;
           poly_mult_start   : out std_logic;
-          rw_in             : out std_logic;
           output_sel        : out std_logic_vector(2 downto 0));
 end rlwe_core_control_unit;
 
@@ -117,55 +116,46 @@ begin
                 poly_mult_start     <= '0';
                 output_sel          <= mode;
                 poly_mult_reset     <= '0';
-                rw_in               <= '1';
             when start_core =>
                 valid               <= '0';
                 poly_mult_start     <= '0';
                 output_sel          <= mode;
                 poly_mult_reset     <= '1';
-                rw_in               <= '0';
             when mult_process =>
                 valid               <= '0';
                 poly_mult_start     <= '1';
                 output_sel          <= mode;
                 poly_mult_reset     <= '0';
-                rw_in               <= '0';
             when add_process =>
                 valid               <= '0';
                 poly_mult_start     <= '0';
                 output_sel          <= mode;
                 poly_mult_reset     <= '0';
-                rw_in               <= '0';
             when negate_process =>
                 valid               <= '0';
                 poly_mult_start     <= '0';
                 output_sel          <= mode;
                 poly_mult_reset     <= '0';
-                rw_in               <= '0';
             when scalar_mult =>
                 valid               <= '0';
                 poly_mult_start     <= '0';
                 output_sel          <= mode;
                 poly_mult_reset     <= '0';
-                rw_in               <= '0';
             when decode_process =>
                 valid               <= '0';
                 poly_mult_start     <= '0';
                 output_sel          <= mode;
                 poly_mult_reset     <= '0';
-                rw_in               <= '0';
             when output =>
                 valid               <= '1';
                 poly_mult_start     <= '0';
                 output_sel          <= mode;
                 poly_mult_reset     <= '0';
-                rw_in               <= '0';
             when stall =>
                 valid               <= '1';
                 poly_mult_start     <= '0';
                 output_sel          <= mode;
                 poly_mult_reset     <= '0';
-                rw_in               <= '0';
         end case;
     end process;
 

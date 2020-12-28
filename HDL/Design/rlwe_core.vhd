@@ -14,6 +14,7 @@
 --      1. mode = 1 --> polynomial multiplication
 --      1. mode = 2 --> polynomial coefficient wise negation
 --      1. mode = 3 --> polynomial coefficient wise scalar multiplication
+--      1. mode = 4 --> polynomial coefficient rlwe decode
 -- Dependencies: 
 -- 
 -- Revision:
@@ -37,14 +38,17 @@ use work.my_types.all;
 --use UNISIM.VComponents.all;
 
 entity rlwe_core is
-    Port (clk   : in std_logic;
-          start : in std_logic;
-          reset : in std_logic;
-          mode  : in std_logic_vector(2 downto 0);
-          poly_0 : in port_t;
-          poly_1 : in port_t;
-          output: out port_t;
-          valid : out std_logic
+    Port (clk           : in std_logic;
+          start         : in std_logic;
+          reset         : in std_logic;
+          mode          : in std_logic_vector(2 downto 0);
+          poly_0        : in coefficient_t;
+          poly_1        : in coefficient_t;
+          write_index   : in index_t;
+          write         : in std_logic;
+          read_index    : in index_t;
+          output        : out coefficient_t;
+          valid         : out std_logic
            );
 end rlwe_core;
 
@@ -59,7 +63,6 @@ component rlwe_core_control_unit is
           valid             : out std_logic;
           poly_mult_reset   : out std_logic;
           poly_mult_start   : out std_logic;
-          rw_in             : out std_logic;
           output_sel        : out std_logic_vector(2 downto 0));
 end component;
 
@@ -99,21 +102,21 @@ component decoder is
           output  : out port_t);
 end component;
 
-signal poly_mult_valid  : std_logic;
-signal poly_mult_reset  : std_logic;
-signal poly_mult_start  : std_logic;
-signal output_sel       : std_logic_vector(2 downto 0);
-signal rw_in            : std_logic;
+signal poly_mult_valid          : std_logic                     := '0';
+signal poly_mult_reset          : std_logic                     := '0';
+signal poly_mult_start          : std_logic                     := '0';
+signal output_sel               : std_logic_vector(2 downto 0)  :=(others => '0');
 
-signal poly_add_output          : port_t;
-signal poly_mult_output         : port_t;
-signal poly_negate_output       : port_t;
-signal poly_scalar_mult_output  : port_t;
-signal poly_decoded_output      : port_t;
+signal poly_add_output          : port_t                        := (others => (others => '0'));
+signal poly_mult_output         : port_t                        := (others => (others => '0'));
+signal poly_negate_output       : port_t                        := (others => (others => '0'));
+signal poly_scalar_mult_output  : port_t                        := (others => (others => '0'));
+signal poly_decoded_output      : port_t                        := (others => (others => '0'));
 
-signal poly_0_buffer    : port_t;
-signal poly_1_buffer    : port_t;
-signal mode_buffer      : std_logic_vector(2 downto 0);
+signal poly_0_buffer            : port_t                        := (others => (others => '0'));
+signal poly_1_buffer            : port_t                        := (others => (others => '0'));
+signal mode_buffer              : std_logic_vector(2 downto 0)  := (others => '0');
+signal output_buffer            : port_t                        := (others => (others => '0'));
 
 begin
 
@@ -127,7 +130,6 @@ begin
         valid           => valid,
         poly_mult_reset => poly_mult_reset,
         poly_mult_start => poly_mult_start,
-        rw_in           => rw_in,
         output_sel      => output_sel
     );
 
@@ -135,8 +137,8 @@ begin
     port map (
         clk     => clk,
         reset   => reset,
-        poly_0   => poly_0_buffer,
-        poly_1   => poly_1_buffer,
+        poly_0  => poly_0_buffer,
+        poly_1  => poly_1_buffer,
         start   => poly_mult_start,
         output  => poly_mult_output,
         valid   => poly_mult_valid
@@ -145,8 +147,8 @@ begin
     adder: poly_add
     port map (
         clk     => clk,
-        poly_0   => poly_0_buffer,
-        poly_1   => poly_1_buffer,
+        poly_0  => poly_0_buffer,
+        poly_1  => poly_1_buffer,
         output  => poly_add_output
     );
     
@@ -168,33 +170,54 @@ begin
     decrypt_decoder: decoder
     port map (
         clk     => clk,
-        poly_0   => poly_1_buffer,
+        poly_0  => poly_1_buffer,
         output  => poly_decoded_output
     );
         
     input_buffer : process(clk)
     begin
         if rising_edge(clk) then
-            if rw_in = '1' then
-                poly_0_buffer   <= poly_0;
-                poly_1_buffer   <= poly_1;
-                mode_buffer     <= mode;
+            if write = '1' then
+                poly_0_buffer(to_integer(write_index))  <= poly_0;
+                poly_1_buffer(to_integer(write_index))  <= poly_1;
             end if;
         end if;
     end process;
     
-    output_mux : process(output_sel, poly_mult_output, poly_add_output, poly_negate_output, poly_scalar_mult_output, poly_decoded_output)
+    mode_buffer_write : process(clk)
     begin
-        if output_sel = "000" then
-            output <= poly_add_output;
-        elsif output_sel = "001" then
-            output <= poly_mult_output;
-        elsif output_sel = "010" then
-            output <= poly_negate_output;
-        elsif output_sel = "011" then
-            output <= poly_scalar_mult_output;
-        else 
-            output <= poly_decoded_output;
+        if rising_edge(clk) then
+            if start = '1' then
+                mode_buffer                 <= mode;
+            end if;
+        end if;
+    end process;
+    
+    output_buffer_process : process(clk)
+    begin
+        if rising_edge(clk) then
+            if read_index < POLYNOMIAL_LENGTH then
+                output <= output_buffer(to_integer(read_index));
+            else
+                output <= output_buffer(POLYNOMIAL_LENGTH - 1);
+            end if;
+        end if;
+    end process;
+        
+    output_mux : process(clk, output_sel, poly_mult_output, poly_add_output, poly_negate_output, poly_scalar_mult_output, poly_decoded_output)
+    begin
+        if rising_edge(clk) then
+            if output_sel = "000" then
+                output_buffer <= poly_add_output;
+            elsif output_sel = "001" then
+                output_buffer <= poly_mult_output;
+            elsif output_sel = "010" then
+                output_buffer <= poly_negate_output;
+            elsif output_sel = "011" then
+                output_buffer <= poly_scalar_mult_output;
+            else 
+                output_buffer <= poly_decoded_output;
+            end if;
         end if;
     end process;
 

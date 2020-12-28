@@ -2,9 +2,9 @@
 -- Company: 
 -- Engineer: 
 -- 
--- Create Date: 06/15/2020 06:24:21 PM
+-- Create Date: 06/15/2020 02:47:29 PM
 -- Design Name: 
--- Module Name: mux2to1 - Behavioral
+-- Module Name: reg - Behavioral
 -- Project Name: 
 -- Target Devices: 
 -- Tool Versions: 
@@ -32,25 +32,28 @@ use work.my_types.all;
 --library UNISIM;
 --use UNISIM.VComponents.all;
 
-entity mux3to1 is
-    Port (input1    : in port_t;
-          input2    : in port_t;
-          input3    : in port_t;
-          sel       : in std_logic_vector(1 downto 0);
-          output    : out port_t );
-end mux3to1;
+entity buff is
+    Port ( clk          : in STD_LOGIC;
+           write        : in STD_LOGIC;
+           write_index  : in index_t;
+           read_index   : in index_t;
+           input        : in coefficient_t; 
+           output       : out coefficient_t);
+end buff;
 
-architecture Behavioral of mux3to1 is
+architecture Behavioral of buff is
+
+signal data : port_t := (others => (others => '0'));
 
 begin
-    main: process(sel, input1, input2)
+    main: process(clk)
     begin
-        if sel = "00" then
-            output <= input1;
-        elsif sel = "01" then
-            output <= input2;
-        else
-            output <= input3;
+        if rising_edge(clk) then
+            output <= data(to_integer(read_index));
+            if write = '1' then
+                data(to_integer(write_index)) <= input;
+            end if;
         end if;
     end process;
+
 end Behavioral;

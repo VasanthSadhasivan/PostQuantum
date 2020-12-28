@@ -2,9 +2,9 @@
 -- Company: 
 -- Engineer: 
 -- 
--- Create Date: 06/15/2020 06:24:21 PM
+-- Create Date: 08/10/2020 02:46:02 PM
 -- Design Name: 
--- Module Name: mux2to1 - Behavioral
+-- Module Name: reg_file - Behavioral
 -- Project Name: 
 -- Target Devices: 
 -- Tool Versions: 
@@ -23,6 +23,7 @@ library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
 use IEEE.NUMERIC_STD.ALL;
 use work.my_types.all;
+
 -- Uncomment the following library declaration if using
 -- arithmetic functions with Signed or Unsigned values
 --use IEEE.NUMERIC_STD.ALL;
@@ -32,22 +33,29 @@ use work.my_types.all;
 --library UNISIM;
 --use UNISIM.VComponents.all;
 
-entity mux2to1 is
-    Port (input_0    : in coefficient_t;
-          input_1    : in coefficient_t;
-          sel       : in std_logic;
-          output    : out coefficient_t );
-end mux2to1;
+entity reg_file_ram is
+    Port (  clk     : in STD_LOGIC;
+            input   : in coefficient_t;
+            addr    : in index_t;
+            write   : in STD_LOGIC;
+            output  : out coefficient_t);
+end reg_file_ram;
 
-architecture Behavioral of mux2to1 is
 
-begin
-    main: process(sel, input_0, input_1)
+architecture Behavioral of reg_file_ram is
+
+signal ram_data : port_t := (others=>(others=>'0'));
+
+begin   
+    rw_process : process(clk)
     begin
-        if sel = '0' then
-            output <= input_0;
-        else
-            output <= input_1;
+        if rising_edge(clk) then
+            output <= ram_data(to_integer(unsigned(addr)));
+
+            if write = '1' then
+                ram_data(to_integer(unsigned(addr))) <= input;
+            end if;
+            
         end if;
     end process;
 end Behavioral;

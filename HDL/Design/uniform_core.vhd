@@ -33,20 +33,23 @@ use work.my_types.all;
 --use UNISIM.VComponents.all;
 
 entity uniform_core is
-    Port (clk   : in std_logic;
-          gen   : in std_logic;
-          reset : in std_logic;
-          valid : out std_logic;
-          output: out port_t );
+    Port (clk           : in std_logic;
+          gen           : in std_logic;
+          read_index    : in index_t;
+          reset         : in std_logic;
+          valid         : out std_logic;
+          output        : out coefficient_t );
 end uniform_core;
 
 architecture Behavioral of uniform_core is
 
 begin
-    
-    main: for i in 0 to to_integer(to_unsigned(POLYNOMIAL_LENGTH, BIT_WIDTH) - 1) generate
-        output(i) <= to_unsigned(i, BIT_WIDTH);
-    end generate main;
+    main_process : process(clk)
+    begin
+        if rising_edge(clk) then
+            output <= to_unsigned(to_integer(read_index), BIT_WIDTH);
+        end if;
+    end process;
 
     reset_process : process(reset)
     begin

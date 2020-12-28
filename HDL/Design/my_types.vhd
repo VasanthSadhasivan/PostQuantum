@@ -11,7 +11,9 @@ package my_types is
     constant BIT_WIDTH : integer := 64;
     constant POLYNOMIAL_LENGTH : integer := 256;
     subtype instruction_op_t is unsigned(17 downto 0);
-    type port_t is array(POLYNOMIAL_LENGTH-1 downto 0) of unsigned(BIT_WIDTH-1 downto 0);
+    subtype index_t is unsigned(log2(POLYNOMIAL_LENGTH) downto 0);
+    subtype coefficient_t is unsigned(BIT_WIDTH-1 downto 0);
+    type port_t is array(POLYNOMIAL_LENGTH downto 0) of coefficient_t;
     type double_port_t is array(POLYNOMIAL_LENGTH-1 downto 0) of unsigned(2*BIT_WIDTH-1 downto 0);
     type port_array_t is array (0 to 15) of port_t;
     subtype instruction_t is unsigned(17 downto 0);

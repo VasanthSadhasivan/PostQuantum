@@ -36,18 +36,22 @@ entity gaussian_core is
     Port (clk           : in std_logic;
           gen           : in std_logic;
           reset         : in std_logic;
+          read_index    : in index_t;
           valid         : out std_logic;
-          output        : out port_t );
+          output        : out coefficient_t );
 end gaussian_core;
 
 architecture Behavioral of gaussian_core is
 
 begin
 
-    main: for i in 0 to to_integer(to_unsigned(POLYNOMIAL_LENGTH, BIT_WIDTH) - 1) generate
-        output(i) <= to_unsigned(1, BIT_WIDTH);
-    end generate main;
-    
+    main_process : process(clk)
+    begin
+        if rising_edge(clk) then
+            output <= to_unsigned(1, BIT_WIDTH);
+        end if;
+    end process;
+
     reset_process : process(reset)
     begin
         if reset = '1' then
