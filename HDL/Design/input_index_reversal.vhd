@@ -21,15 +21,17 @@ end input_index_reversal;
 
 architecture Behavioral of input_index_reversal is
 
-signal reversed_indeces : port_t;
+type reversed_index_t is array(POLYNOMIAL_LENGTH-1 downto 0) of unsigned(NUM_STAGES-1 downto 0);
+
+signal reversed_indeces : reversed_index_t;
 
 begin
 
-    main: for i in 0 to to_integer(to_unsigned(POLYNOMIAL_LENGTH, BIT_WIDTH) - 1) generate
+    main: for i in 0 to POLYNOMIAL_LENGTH-1 generate
         reverse_bits: for j in 0 to NUM_STAGES - 1 generate
             reversed_indeces(i)(j downto j) <= to_unsigned(i, BIT_WIDTH)(NUM_STAGES - 1 - j downto NUM_STAGES - 1 - j);
         end generate reverse_bits;
-		output(i) <= input(to_integer(reversed_indeces(i)(NUM_STAGES - 1 downto 0)));
+		output(i) <= input(to_integer(reversed_indeces(i)));
     end generate main;
 
 end Behavioral;

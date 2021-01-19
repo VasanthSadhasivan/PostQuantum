@@ -34,33 +34,31 @@ use work.my_types.all;
 
 entity poly_scalar_mult is
     Port ( clk : in STD_LOGIC;
-           scalar : in unsigned(BIT_WIDTH-1 downto 0);
-           poly : in port_t;
-           output : out port_t);
+           scalar : in coefficient_t;
+           poly : in coefficient_t;
+           output : out coefficient_t);
 end poly_scalar_mult;
 
 architecture Behavioral of poly_scalar_mult is
 
 component modular_reduction_q is
-    Port ( input : in unsigned (BIT_WIDTH-1 downto 0);
-           output : out unsigned (BIT_WIDTH-1  downto 0));
+    Port ( input : in double_coefficient_t;
+           output : out coefficient_t);
 end component;
 
-signal output_double : double_port_t;
+signal output_double : double_coefficient_t;
 
 begin
-    main: for i in 0 to to_integer(to_unsigned(POLYNOMIAL_LENGTH, BIT_WIDTH) - 1) generate
-        process(clk)
-        begin
-            if rising_edge(clk) then
-                output_double(i) <= poly(i)*scalar;
-            end if;
-		end process;
-		
-		modulus: modular_reduction_q 
-        port map (
-            input => output_double(i)(BIT_WIDTH-1 downto 0),
-            output => output(i)
-        );
-    end generate main;
+    process(clk)
+    begin
+        if rising_edge(clk) then
+            output_double <= poly * scalar;
+        end if;
+    end process;
+
+    modulus: modular_reduction_q 
+    port map (
+        input => output_double,
+        output => output
+    );
 end Behavioral;

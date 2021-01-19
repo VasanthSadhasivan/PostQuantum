@@ -9,9 +9,11 @@ use work.my_types.all;
 entity intt is
   Port (clk     : in std_logic;
         reset   : in std_logic;
-        input   : in port_t;
+        input   : in coefficient_t;
         start   : in std_logic;
-        output  : out port_t;
+        write   : in std_logic;
+        index   : in index_t;
+        output  : out coefficient_t;
         valid   : out std_logic);
 end intt;
 
@@ -88,8 +90,8 @@ component input_index_reversal is
 end component;
 
 component modular_reduction_q is
-    Port ( input :  in  unsigned (BIT_WIDTH-1 downto 0);
-           output : out unsigned (BIT_WIDTH-1 downto 0)
+    Port ( input :  in  double_coefficient_t;
+           output : out coefficient_t
           );
 end component;
 
@@ -100,8 +102,25 @@ component elementwise_multiply_mod is
        );
 end component;
 
+signal input_buffer     : port_t := (others => (others => '0'));
+signal output_buffer    : port_t := (others => (others => '0'));
 
 begin
+    input_buffer_process : process(clk)
+    begin
+        if rising_edge(clk) then
+            if write = '1' then
+                input_buffer(to_integer(index)) <= input;
+            end if;
+        end if;
+    end process;
+    
+    output_buffer_process : process(clk)
+    begin
+        if rising_edge(clk) then
+            output <= output_buffer(to_integer(index));
+        end if;
+    end process;
 
     y_i_mult <= y_i * NUM_STAGES_INV;
     y_i_corr_mult <= y_i_corr * NUM_STAGES_INV;
@@ -114,19 +133,19 @@ begin
         
     x_i_modulus: modular_reduction_q
     port map (
-      input =>  y_i_mult(BIT_WIDTH-1 downto 0),
+      input =>  y_i_mult,
       output => y_i_mod
     );
     
     x_i_modulus_xor: modular_reduction_q
     port map (
-      input =>  y_i_corr_mult(BIT_WIDTH-1 downto 0),
+      input =>  y_i_corr_mult,
       output => y_i_corr_mod
     );
     
     input_index_flipping: input_index_reversal
     port map (
-        input => input,
+        input => input_buffer,
         output => input_reversed
     );
 
@@ -241,7 +260,7 @@ begin
                     x(to_integer(prev_i_corr))              <= y_i_corr;
                     k                                       <= potential_k;
                 when done =>
-                    output <= x_final;
+                    output_buffer <= x_final;
                     valid <= '1';
                     
                 when others =>

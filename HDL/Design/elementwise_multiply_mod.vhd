@@ -22,8 +22,8 @@ end elementwise_multiply_mod;
 architecture Behavioral of elementwise_multiply_mod is
 
 component modular_reduction_q is
-    Port ( input : in unsigned (BIT_WIDTH-1 downto 0);
-           output : out unsigned (BIT_WIDTH-1  downto 0));
+    Port ( input : in double_coefficient_t;
+           output : out coefficient_t);
 end component;
 
 signal input_mult : double_port_t;
@@ -34,7 +34,7 @@ begin
         input_mult(i) <= NUM_STAGES_INV*input(i);
         modulus: modular_reduction_q 
         port map (
-            input => input_mult(i)(BIT_WIDTH-1 downto 0),
+            input => input_mult(i),
             output => output(i)
         );
     end generate main;

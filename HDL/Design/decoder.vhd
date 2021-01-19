@@ -35,26 +35,24 @@ use work.my_types.all;
 
 entity decoder is
     Port (clk     : in std_logic;
-          poly_0   : in port_t;
-          output  : out port_t);
+          poly_0   : in coefficient_t;
+          output  : out coefficient_t);
 end decoder;
 
 architecture Behavioral of decoder is
 
 begin
 
-    main: for i in 0 to to_integer(to_unsigned(POLYNOMIAL_LENGTH, BIT_WIDTH) - 1) generate
-        process(clk)
-        begin
-            if rising_edge(clk) then
-                if to_integer(poly_0(i)) > MODULO/4 then
-                    output(i) <= to_unsigned(1, BIT_WIDTH);
-                else
-                    output(i) <= to_unsigned(0, BIT_WIDTH);
-                end if;
+    process(clk)
+    begin
+        if rising_edge(clk) then
+            if to_integer(poly_0) > MODULO/4 then
+                output <= to_unsigned(1, BIT_WIDTH);
+            else
+                output <= to_unsigned(0, BIT_WIDTH);
             end if;
-		end process;
+        end if;
+	end process;
 		
-    end generate main;
 
 end Behavioral;

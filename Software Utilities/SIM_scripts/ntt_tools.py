@@ -307,3 +307,12 @@ def modular_sqrt(a, p):
 def legendre_symbol(a, p):
   ls = pow(a, (p - 1) // 2, p)
   return (-1 if ls == p - 1 else ls)
+
+def lfsr(seed):
+  tap_1_index = 2
+  tap_2_index = 19
+
+  tap_1_value = (seed >> tap_1_index) & 1
+  tap_2_value = (seed >> tap_2_index) & 1
+  return (((~(tap_1_value ^ tap_2_value)) & 1) << 19) + (seed >> 1)
+

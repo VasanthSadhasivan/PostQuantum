@@ -43,20 +43,52 @@ end uniform_core;
 
 architecture Behavioral of uniform_core is
 
-begin
-    main_process : process(clk)
-    begin
-        if rising_edge(clk) then
-            output <= to_unsigned(to_integer(read_index), BIT_WIDTH);
-        end if;
-    end process;
+component buff is
+    Port ( clk          : in STD_LOGIC;
+           write        : in STD_LOGIC;
+           write_index  : in index_t;
+           read_index   : in index_t;
+           input        : in coefficient_t; 
+           output       : out coefficient_t);
+end component;
 
-    reset_process : process(reset)
-    begin
-        if reset = '1' then
-            valid <= '0';
-        else
-            valid <= '1';
-        end if;
-    end process;
+component uniform_control_unit is
+    Port (
+        clk                     : in std_logic;
+        reset                   : in std_logic;
+        start                   : in std_logic;
+        data_reg                : out unsigned(19 downto 0);
+        data_buffer_write_index : out index_t;
+        data_buffer_write       : out std_logic;
+        valid                   : out std_logic
+    );
+end component;
+
+signal data_reg                 : unsigned(19 downto 0) := to_unsigned(1, 20);
+signal data_buffer_write        : std_logic := '0';
+signal data_buffer_write_index  : index_t := (others => '0');
+
+begin
+    data_buffer_component : buff
+    port map
+    (
+        clk         => clk,
+        write       => data_buffer_write,
+        write_index => data_buffer_write_index,
+        read_index  => read_index,
+        input       => to_unsigned(0, BIT_WIDTH - 20) & data_reg,
+        output      => output
+    );
+
+    uniform_control_unit_component : uniform_control_unit
+    port map
+    (
+        clk                     => clk                    ,
+        reset                   => reset                  ,
+        start                   => gen                    ,
+        data_reg                => data_reg               ,
+        data_buffer_write_index => data_buffer_write_index,
+        data_buffer_write       => data_buffer_write      ,
+        valid                   => valid                  
+    );
 end Behavioral;

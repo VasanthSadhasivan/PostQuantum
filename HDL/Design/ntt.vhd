@@ -9,9 +9,11 @@ use work.my_types.all;
 entity ntt is
   Port (clk     : in std_logic;
         reset   : in std_logic;
-        input   : in port_t;
+        input   : in coefficient_t;
+        write   : in std_logic;
+        index   : in index_t;
         start   : in std_logic;
-        output  : out port_t;
+        output  : out coefficient_t;
         valid   : out std_logic);
 end ntt;
 
@@ -82,11 +84,29 @@ component input_index_reversal is
        );
 end component;
 
+signal input_buffer     : port_t := (others => (others => '0'));
+signal output_buffer    : port_t := (others => (others => '0'));
+
 begin
+    input_buffer_process : process(clk)
+    begin
+        if rising_edge(clk) then
+            if write = '1' then
+                input_buffer(to_integer(index)) <= input;
+            end if;
+        end if;
+    end process;
+    
+    output_buffer_process : process(clk)
+    begin
+        if rising_edge(clk) then
+            output <= output_buffer(to_integer(index));
+        end if;
+    end process;
 
     input_index_flipping:input_index_reversal
     port map (
-        input => input,
+        input => input_buffer,
         output => input_reversed
     );
 
@@ -201,7 +221,7 @@ begin
                     x(to_integer(prev_i_corr))              <= y_i_corr;
                     k                                       <= potential_k;
                 when done =>
-                    output <= x;
+                    output_buffer <= x;
                     valid <= '1';
                     
                 when others =>

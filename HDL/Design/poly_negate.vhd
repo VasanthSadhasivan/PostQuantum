@@ -35,25 +35,23 @@ use work.my_types.all;
 
 entity poly_negate is
     Port (clk     : in std_logic;
-          poly   : in port_t;
-          output  : out port_t);
+          poly   : in coefficient_t;
+          output  : out coefficient_t);
 end poly_negate;
 
 architecture Behavioral of poly_negate is
 
 begin
 
-    main: for i in 0 to to_integer(to_unsigned(POLYNOMIAL_LENGTH, BIT_WIDTH) - 1) generate
-        process(clk)
-        begin
-            if rising_edge(clk) then
-                if poly(i) /= to_unsigned(0, BIT_WIDTH) then
-                    output(i) <= MODULO - poly(i);
-                else
-                    output(i) <= to_unsigned(0, BIT_WIDTH);
-                end if;
+    process(clk)
+    begin
+        if rising_edge(clk) then
+            if to_integer(poly) /= 0 then
+                output <= MODULO - poly;
+            else
+                output <= (others => '0');
             end if;
-		end process;
-    end generate main;
+        end if;
+	end process;
 
 end Behavioral;

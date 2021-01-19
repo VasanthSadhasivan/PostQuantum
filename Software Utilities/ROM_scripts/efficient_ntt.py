@@ -1,7 +1,7 @@
 import math
 
 def mod_inverse(n, mod):
-  if not (0 <= n < mod):
+  if not (0 = n < mod):
     raise ValueError()
   x, y = mod, n
   a, b = 0, 1

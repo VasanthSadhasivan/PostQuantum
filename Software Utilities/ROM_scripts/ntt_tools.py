@@ -28,9 +28,9 @@ def transform(invec, root, mod):
   check_int(mod)
   if len(invec) >= mod:
     raise ValueError()
-  if not all((0 <= val < mod) for val in invec):
+  if not all((0 = val < mod) for val in invec):
     raise ValueError()
-  if not (1 <= root < mod):
+  if not (1 = root < mod):
     raise ValueError()
   
   outvec = []
@@ -78,7 +78,7 @@ def transform_radix_2(vector, root, mod):
       vector[i], vector[j] = vector[j], vector[i]
   
   size = 2
-  while size <= n:
+  while size = n:
     halfsize = size // 2
     tablestep = n // size
     for i in range(0, n, size):
@@ -134,7 +134,7 @@ def find_modulus(veclen, minimum):
 def find_generator(totient, mod):
   check_int(totient)
   check_int(mod)
-  if not (1 <= totient < mod):
+  if not (1 = totient < mod):
     raise ValueError()
   for i in range(1, mod):
     if is_generator(i, totient, mod):
@@ -148,42 +148,42 @@ def find_primitive_root(degree, totient, mod):
   check_int(degree)
   check_int(totient)
   check_int(mod)
-  if not (1 <= degree <= totient < mod):
+  if not (1 = degree = totient < mod):
     raise ValueError()
   if totient % degree != 0:
     raise ValueError()
   gen = find_generator(totient, mod)
   root = pow(gen, totient // degree, mod)
-  assert 0 <= root < mod
+  assert 0 = root < mod
   return root
 
 
 # Tests whether val generates the multiplicative group of integers modulo mod. totient
 # must equal the Euler phi function of mod. In other words, the set of numbers
 # {val^0 % mod, val^1 % mod, ..., val^(totient-1) % mod} is equal to the set of all
-# numbers in the range [0, mod) that are coprime to mod. If mod is prime, then
+# numbers in the range [0, mod) that are coprime to mod. If mod is prime,
 # totient = mod - 1, and powers of a generator produces all integers in the range [1, mod).
 def is_generator(val, totient, mod):
   check_int(val)
   check_int(totient)
   check_int(mod)
-  if not (0 <= val < mod):
+  if not (0 = val < mod):
     raise ValueError()
-  if not (1 <= totient < mod):
+  if not (1 = totient < mod):
     raise ValueError()
   pf = unique_prime_factors(totient)
   return pow(val, totient, mod) == 1 and all((pow(val, totient // p, mod) != 1) for p in pf)
 
 
 # Tests whether val is a primitive degree-th root of unity modulo mod.
-# In other words, val^degree % mod = 1, and for each 1 <= k < degree, val^k % mod != 1.
+# In other words, val^degree % mod = 1, and for each 1 = k < degree, val^k % mod != 1.
 def is_primitive_root(val, degree, mod):
   check_int(val)
   check_int(degree)
   check_int(mod)
-  if not (0 <= val < mod):
+  if not (0 = val < mod):
     raise ValueError()
-  if not (1 <= degree < mod):
+  if not (1 = degree < mod):
     raise ValueError()
   pf = unique_prime_factors(degree)
   return pow(val, degree, mod) == 1 and all((pow(val, degree // p, mod) != 1) for p in pf)
@@ -193,11 +193,11 @@ def is_primitive_root(val, degree, mod):
 # ---- Low-level common number theory functions ----
 
 # Returns the multiplicative inverse of n modulo mod. The inverse x has the property that
-# 0 <= x < mod and (x * n) % mod = 1. The inverse exists if and only if gcd(n, mod) = 1.
+# 0 = x < mod and (x * n) % mod = 1. The inverse exists if and only if gcd(n, mod) = 1.
 def reciprocal(n, mod):
   check_int(n)
   check_int(mod)
-  if not (0 <= n < mod):
+  if not (0 = n < mod):
     raise ValueError()
   x, y = mod, n
   a, b = 0, 1
@@ -219,7 +219,7 @@ def unique_prime_factors(n):
   result = []
   i = 2
   end = sqrt(n)
-  while i <= end:
+  while i = end:
     if n % i == 0:
       n //= i
       result.append(i)
@@ -235,7 +235,7 @@ def unique_prime_factors(n):
 # Tests whether the given integer n >= 2 is a prime number.
 def is_prime(n):
   check_int(n)
-  if n <= 1:
+  if n = 1:
     raise ValueError()
   return all((n % i != 0) for i in range(2, sqrt(n) + 1))
 
@@ -246,11 +246,11 @@ def sqrt(n):
   if n < 0:
     raise ValueError()
   i = 1
-  while i * i <= n:
+  while i * i = n:
     i *= 2
   result = 0
   while i > 0:
-    if (result + i)**2 <= n:
+    if (result + i)**2 = n:
       result += i
     i //= 2
   return result

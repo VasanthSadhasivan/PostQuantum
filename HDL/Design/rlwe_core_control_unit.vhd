@@ -33,28 +33,42 @@ use work.my_types.all;
 --use UNISIM.VComponents.all;
 
 entity rlwe_core_control_unit is
-    Port (clk               : in std_logic;
-          mode              : in std_logic_vector(2 downto 0);
-          start             : in std_logic;
-          reset             : in std_logic;
-          poly_mult_valid   : in std_logic;
-          valid             : out std_logic;
-          poly_mult_reset   : out std_logic;
-          poly_mult_start   : out std_logic;
-          output_sel        : out std_logic_vector(2 downto 0));
+    Port (clk                       : in std_logic;
+          mode_buffer               : in std_logic_vector(2 downto 0);
+          start                     : in std_logic;
+          reset                     : in std_logic;
+          poly_mult_valid           : in std_logic;
+          mode_buffer_write         : out std_logic;
+          valid                     : out std_logic;
+          poly_mult_reset           : out std_logic;
+          poly_mult_start           : out std_logic;
+          poly_0_buffer_read_index  : out index_t := (others => '0');
+          poly_1_buffer_read_index  : out index_t := (others => '0');
+          poly_mult_read_index      : out index_t := (others => '0');
+          poly_mult_write_index     : out index_t := (others => '0');
+          output_buffer_write_index : out index_t := (others => '0');
+          output_buffer_write       : out std_logic;
+          poly_mult_write           : out std_logic
+          );
 end rlwe_core_control_unit;
 
 architecture Behavioral of rlwe_core_control_unit is
-    TYPE STATE_TYPE IS (idle, 
-                        start_core, 
-                        mult_process, 
-                        add_process, 
-                        negate_process, 
-                        scalar_mult, 
-                        decode_process, 
-                        output, 
-                        stall);
+    TYPE STATE_TYPE IS (idle,
+                        mode_store,
+                        mode_buffer_wait,
+                        start_process,
+                        non_mult_process,
+                        non_mult_output_process,
+                        done,
+                        mult_process,
+                        mult_store_input,
+                        mult_start_process,
+                        mult_wait_process,
+                        mult_output_process,
+                        mult_output_store_process);
+                        
     SIGNAL state   : STATE_TYPE;
+    
 begin
 
     fsm : process(clk, reset)
@@ -65,97 +79,167 @@ begin
             case state is
                 when idle => 
                     if start = '1' then
-                        state <= start_core;
+                        state <= mode_store;
                     else
                         state <= idle;
                     end if;
-                when start_core =>
-                    case mode is
-                        when "000" =>
-                            state <= add_process;
-                        when "001" =>
-                            state <= mult_process;
-                        when "010" =>
-                            state <= negate_process;
-                        when "011" =>
-                            state <= scalar_mult;
-                        when "100" =>
-                            state <= decode_process;
-                        when others =>
-                            state <= add_process;
-                    end case;
-                when mult_process =>
-                    if poly_mult_valid = '0' then
+                when mode_store =>
+                    poly_0_buffer_read_index <= (others => '0');
+                    poly_1_buffer_read_index <= (others => '0');
+                    poly_mult_read_index <= (others => '0');
+                    poly_mult_write_index <= (others => '0');
+                    output_buffer_write_index <= (others => '0');
+                    state <= mode_buffer_wait;
+                when mode_buffer_wait =>
+                    state <= start_process;
+                when start_process =>
+                    if mode_buffer = "001" then
                         state <= mult_process;
                     else
-                        state <= output;
+                        state <= non_mult_process;
                     end if;
-                when add_process =>
-                    state <= output;
-                when negate_process =>
-                    state <= output;
-                when scalar_mult =>
-                    state <= output;
-                when decode_process =>
-                    state <= output;
-                when output =>
-                    state <= stall;
-                when stall =>
+                when non_mult_process =>
+                    poly_0_buffer_read_index <= poly_0_buffer_read_index + 1;
+                    poly_1_buffer_read_index <= poly_0_buffer_read_index + 1;
+                    state <= non_mult_output_process;
+                when non_mult_output_process => 
+                    if to_integer(poly_1_buffer_read_index) = POLYNOMIAL_LENGTH then
+                        state <= done;
+                    else
+                        output_buffer_write_index <= output_buffer_write_index + 1;
+                        state <= non_mult_process;
+                    end if;
+                when done =>
                     state <= idle;
+                when mult_process =>
+                    poly_0_buffer_read_index <= poly_0_buffer_read_index + 1;
+                    poly_1_buffer_read_index <= poly_1_buffer_read_index + 1;
+                    state <= mult_store_input;
+                when mult_store_input =>
+                    if to_integer(poly_1_buffer_read_index) = POLYNOMIAL_LENGTH then
+                        state <= mult_start_process;
+                    else
+                        poly_mult_write_index <= poly_mult_write_index + 1;
+                        state <= mult_process;
+                    end if;
+                when mult_start_process =>
+                    state <= mult_wait_process;
+                when mult_wait_process =>
+                    if poly_mult_valid = '1' then
+                        state <= mult_output_process;
+                    else
+                        state <= mult_wait_process;
+                    end if;
+                when mult_output_process =>
+                    poly_mult_read_index <= poly_mult_read_index + 1;
+                    state <= mult_output_store_process;
+                when mult_output_store_process =>
+                    if to_integer(poly_mult_read_index) = POLYNOMIAL_LENGTH then
+                        state <= done;
+                    else
+                        output_buffer_write_index <= output_buffer_write_index + 1;
+                        state <= mult_output_process;
+                    end if;
                 when others =>
                     state <= idle;
             end case;
         end if;
     end process;
     
-    combinational : process(state, mode)
+    combinational : process(state)
     begin
         case state is
             when idle =>
+                mode_buffer_write   <= '0';
                 valid               <= '0';
-                poly_mult_start     <= '0';
-                output_sel          <= mode;
                 poly_mult_reset     <= '0';
-            when start_core =>
-                valid               <= '0';
                 poly_mult_start     <= '0';
-                output_sel          <= mode;
+                output_buffer_write <= '0';
+                poly_mult_write     <= '0';
+            when mode_store =>
+                mode_buffer_write   <= '1';
+                valid               <= '0';
+                poly_mult_reset     <= '0';
+                poly_mult_start     <= '0';
+                output_buffer_write <= '0';
+                poly_mult_write     <= '0';
+            when mode_buffer_wait =>
+                mode_buffer_write   <= '0';
+                valid               <= '0';
+                poly_mult_reset     <= '0';
+                poly_mult_start     <= '0';
+                output_buffer_write <= '0';
+                poly_mult_write     <= '0';
+            when start_process =>
+                mode_buffer_write   <= '0';
+                valid               <= '0';
                 poly_mult_reset     <= '1';
+                poly_mult_start     <= '0';
+                output_buffer_write <= '0';
+                poly_mult_write     <= '0';
+            when non_mult_process =>
+                mode_buffer_write   <= '0';
+                valid               <= '0';
+                poly_mult_reset     <= '0';
+                poly_mult_start     <= '0';
+                output_buffer_write <= '0';
+                poly_mult_write     <= '0';
+            when non_mult_output_process =>
+                mode_buffer_write   <= '0';
+                valid               <= '0';
+                poly_mult_reset     <= '0';
+                poly_mult_start     <= '0';
+                output_buffer_write <= '1';
+                poly_mult_write     <= '0';
+            when done =>
+                mode_buffer_write   <= '0';
+                valid               <= '1';
+                poly_mult_reset     <= '0';
+                poly_mult_start     <= '0';
+                output_buffer_write <= '0';
+                poly_mult_write     <= '0';
             when mult_process =>
+                mode_buffer_write   <= '0';
                 valid               <= '0';
+                poly_mult_reset     <= '0';
+                poly_mult_start     <= '0';
+                output_buffer_write <= '0';
+                poly_mult_write     <= '0';
+            when mult_store_input =>
+                mode_buffer_write   <= '0';
+                valid               <= '0';
+                poly_mult_reset     <= '0';
+                poly_mult_start     <= '0';
+                output_buffer_write <= '0';
+                poly_mult_write     <= '1';
+            when mult_start_process =>
+                mode_buffer_write   <= '0';
+                valid               <= '0';
+                poly_mult_reset     <= '0';
                 poly_mult_start     <= '1';
-                output_sel          <= mode;
-                poly_mult_reset     <= '0';
-            when add_process =>
+                output_buffer_write <= '0';
+                poly_mult_write     <= '0';
+            when mult_wait_process =>
+                mode_buffer_write   <= '0';
                 valid               <= '0';
-                poly_mult_start     <= '0';
-                output_sel          <= mode;
                 poly_mult_reset     <= '0';
-            when negate_process =>
+                poly_mult_start     <= '0';
+                output_buffer_write <= '0';
+                poly_mult_write     <= '0';
+            when mult_output_process =>
+                mode_buffer_write   <= '0';
                 valid               <= '0';
-                poly_mult_start     <= '0';
-                output_sel          <= mode;
                 poly_mult_reset     <= '0';
-            when scalar_mult =>
+                poly_mult_start     <= '0';
+                output_buffer_write <= '0';
+                poly_mult_write     <= '0';
+            when mult_output_store_process =>
+                mode_buffer_write   <= '0';
                 valid               <= '0';
-                poly_mult_start     <= '0';
-                output_sel          <= mode;
                 poly_mult_reset     <= '0';
-            when decode_process =>
-                valid               <= '0';
                 poly_mult_start     <= '0';
-                output_sel          <= mode;
-                poly_mult_reset     <= '0';
-            when output =>
-                valid               <= '1';
-                poly_mult_start     <= '0';
-                output_sel          <= mode;
-                poly_mult_reset     <= '0';
-            when stall =>
-                valid               <= '1';
-                poly_mult_start     <= '0';
-                output_sel          <= mode;
-                poly_mult_reset     <= '0';
+                output_buffer_write <= '1';
+                poly_mult_write     <= '0';
         end case;
     end process;
 

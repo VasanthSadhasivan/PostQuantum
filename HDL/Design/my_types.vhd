@@ -8,11 +8,13 @@ use std.textio.all;
 
 package my_types is 
     function log2 (x : positive) return natural;
-    constant BIT_WIDTH : integer := 64;
+    constant BIT_WIDTH : integer := 22;
     constant POLYNOMIAL_LENGTH : integer := 256;
+    constant INDEX_BIT_WIDTH : integer := log2(POLYNOMIAL_LENGTH) + 1;
     subtype instruction_op_t is unsigned(17 downto 0);
-    subtype index_t is unsigned(log2(POLYNOMIAL_LENGTH) downto 0);
+    subtype index_t is unsigned(INDEX_BIT_WIDTH - 1 downto 0);
     subtype coefficient_t is unsigned(BIT_WIDTH-1 downto 0);
+    subtype double_coefficient_t is unsigned(2*BIT_WIDTH-1 downto 0);
     type port_t is array(POLYNOMIAL_LENGTH downto 0) of coefficient_t;
     type double_port_t is array(POLYNOMIAL_LENGTH-1 downto 0) of unsigned(2*BIT_WIDTH-1 downto 0);
     type port_array_t is array (0 to 15) of port_t;
@@ -22,7 +24,7 @@ package my_types is
     constant NUM_STAGES_INV : natural := 1044991;
     constant MODULO : natural := 1049089;
     constant BARRET_REDUCTION_CONSTANT : unsigned(BIT_WIDTH-1 downto 0) := to_unsigned(4192253, BIT_WIDTH);
-    constant BARRET_REDUCTION_K : unsigned(BIT_WIDTH-1 downto 0) := to_unsigned(21, BIT_WIDTH);
+    constant BARRET_REDUCTION_K : integer:= 21;
     impure function read_mem_file(FileName : STRING) return port_t;
     impure function initialize_q_2_ROM return port_t;
 end package;
@@ -44,12 +46,13 @@ package body my_types is
         file file_handle       : TEXT open READ_MODE is FileName;
         variable current_line  : LINE;
         variable result      : port_t    := (others => (others => '0'));
-    
+        variable result_64_bit  : unsigned(64-1 downto 0);
     begin
         for i in 0 to POLYNOMIAL_LENGTH - 1 loop
             exit when endfile(file_handle);
             readline(file_handle, current_line);
-            hread(current_line, result(i));
+            hread(current_line, result_64_bit);
+            result(i) := result_64_bit(BIT_WIDTH - 1 downto 0);
         end loop;
        
         return result;

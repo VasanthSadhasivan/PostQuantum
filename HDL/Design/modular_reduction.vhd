@@ -13,19 +13,29 @@ use IEEE.NUMERIC_STD.ALL;
 --use UNISIM.VComponents.all;
 
 entity modular_reduction_q is
-    Port ( input : in unsigned (BIT_WIDTH-1 downto 0);
-           output : out unsigned (BIT_WIDTH-1  downto 0));
+    Port ( input : in double_coefficient_t;
+           output : out coefficient_t);
 end modular_reduction_q;
 
 architecture Behavioral of modular_reduction_q is
 
-signal multiplied_value : unsigned(BIT_WIDTH*2-1 downto 0) := to_unsigned(0, BIT_WIDTH*2);
-signal shifted_value : unsigned(BIT_WIDTH-1 downto 0) := to_unsigned(0, BIT_WIDTH);
-signal subtracted_value : unsigned(BIT_WIDTH*2-1 downto 0) := to_unsigned(0, BIT_WIDTH*2);
-
+signal multiplied_value : unsigned(BIT_WIDTH*3-1 downto 0) := (others => '0');
+signal shifted_value : unsigned(BIT_WIDTH-1 downto 0) := (others => '0');
+signal shifted_value_test : unsigned(BIT_WIDTH*3-2*BARRET_REDUCTION_K-1 downto 0) := (others => '0');
+signal subtracted_value : unsigned(2*BIT_WIDTH-1 downto 0) := (others => '0');
+signal subtracted_value_test : unsigned(6*BIT_WIDTH-2*BARRET_REDUCTION_K-1 downto 0) := (others => '0');
+signal output_test : unsigned(BIT_WIDTH-1 downto 0) := (others => '0');
+signal output_original : unsigned(BIT_WIDTH-1 downto 0) := (others => '0');
+signal output_diff : std_logic := '0';
+signal zero_pad : unsigned(4*BIT_WIDTH-2*BARRET_REDUCTION_K-1 downto 0) := (others => '0');
+attribute mark_debug : string;
+attribute mark_debug of output_diff : signal is "true";
 begin
+    zero_pad <= (others => '0');
     multiplied_value <= input * BARRET_REDUCTION_CONSTANT;
-    shifted_value <= shift_right(multiplied_value(BIT_WIDTH-1 downto 0), 2*to_integer(BARRET_REDUCTION_K));
-    subtracted_value <= input - shifted_value*MODULO;
-    output <= subtracted_value(BIT_WIDTH-1 downto 0) when (subtracted_value(BIT_WIDTH-1 downto 0) < MODULO) else (subtracted_value(BIT_WIDTH-1 downto 0) - MODULO);
+    shifted_value_test <= shift_right(multiplied_value, 2*BARRET_REDUCTION_K)(BIT_WIDTH*3-2*BARRET_REDUCTION_K-1 downto 0);
+    subtracted_value_test <= zero_pad & input - shifted_value_test*MODULO;
+    output <= output_test;
+    output_test <= subtracted_value_test(BIT_WIDTH-1 downto 0) when (to_integer(subtracted_value_test(BIT_WIDTH-1 downto 0)) < MODULO) else (subtracted_value_test(BIT_WIDTH-1 downto 0) - MODULO);
+
 end Behavioral;

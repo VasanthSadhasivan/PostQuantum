@@ -32,16 +32,24 @@ use work.my_types.all;
 --library UNISIM;
 --use UNISIM.VComponents.all;
 
-entity ROM_phi_inv is
+entity ROM_iphi is
   Port (
-         phi_inv : out port_t);
-end ROM_phi_inv;
+        clk     : in std_logic;
+        index   : in index_t;
+        output  : out coefficient_t
+        );
+end ROM_iphi;
 
-architecture Behavioral of ROM_phi_inv is
+architecture Behavioral of ROM_iphi is
 
-signal main_data : port_t;
-
+signal iphi : port_t := (others => (others => '0'));
 begin
-    main_data <= read_mem_file("phi_inv_ram.hex");
-    phi_inv <= main_data;
+    iphi <= read_mem_file("phi_inv_ram.hex");
+    
+    main : process (clk)
+    begin
+        if rising_edge(clk) then
+            output <= iphi(to_integer(index));
+        end if;
+    end process;
 end Behavioral;

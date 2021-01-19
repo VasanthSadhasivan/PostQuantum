@@ -54,94 +54,176 @@ end rlwe_core;
 
 architecture Behavioral of rlwe_core is
 
+
 component rlwe_core_control_unit is
-    Port (clk               : in std_logic;
-          mode              : in std_logic_vector(2 downto 0);
-          start             : in std_logic;
-          reset             : in std_logic;
-          poly_mult_valid   : in std_logic;
-          valid             : out std_logic;
-          poly_mult_reset   : out std_logic;
-          poly_mult_start   : out std_logic;
-          output_sel        : out std_logic_vector(2 downto 0));
+    Port (clk                       : in std_logic;
+          mode_buffer               : in std_logic_vector(2 downto 0);
+          start                     : in std_logic;
+          reset                     : in std_logic;
+          poly_mult_valid           : in std_logic;
+          mode_buffer_write         : out std_logic;
+          valid                     : out std_logic;
+          poly_mult_reset           : out std_logic;
+          poly_mult_start           : out std_logic;
+          poly_0_buffer_read_index  : out index_t;
+          poly_1_buffer_read_index  : out index_t;
+          poly_mult_read_index      : out index_t;
+          poly_mult_write_index     : out index_t;
+          output_buffer_write_index : out index_t;
+          output_buffer_write       : out std_logic;
+          poly_mult_write           : out std_logic
+          );
 end component;
 
 component poly_mult is
-    Port (clk     : in std_logic;
-          reset   : in std_logic; 
-          poly_0   : in port_t;
-          poly_1   : in port_t;
-          start   : in std_logic;
-          output  : out port_t;
-          valid   : out std_logic);
+    Port (clk           : in std_logic;
+          reset         : in std_logic; 
+          poly_0        : in coefficient_t;
+          poly_1        : in coefficient_t;
+          start         : in std_logic;
+          write         : in std_logic;
+          write_index   : in index_t;
+          read_index    : in index_t;
+          output        : out coefficient_t;
+          valid         : out std_logic);
 end component;
 
 component poly_add is
     Port (clk     : in std_logic;
-          poly_0   : in port_t;
-          poly_1   : in port_t;
-          output  : out port_t);
+          poly_0   : in coefficient_t;
+          poly_1   : in coefficient_t;
+          output  : out coefficient_t);
 end component;
 
 component poly_negate is
     Port (clk     : in std_logic;
-          poly   : in port_t;
-          output  : out port_t);
+          poly   : in coefficient_t;
+          output  : out coefficient_t);
 end component;
 
 component poly_scalar_mult is
     Port ( clk : in STD_LOGIC;
-           scalar : in unsigned(BIT_WIDTH-1 downto 0);
-           poly : in port_t;
-           output : out port_t);
+           scalar : in coefficient_t;
+           poly : in coefficient_t;
+           output : out coefficient_t);
 end component;
 
 component decoder is
     Port (clk     : in std_logic;
-          poly_0   : in port_t;
-          output  : out port_t);
+          poly_0   : in coefficient_t;
+          output  : out coefficient_t);
 end component;
 
-signal poly_mult_valid          : std_logic                     := '0';
-signal poly_mult_reset          : std_logic                     := '0';
-signal poly_mult_start          : std_logic                     := '0';
-signal output_sel               : std_logic_vector(2 downto 0)  :=(others => '0');
+component buff is
+    Port ( clk          : in STD_LOGIC;
+           write        : in STD_LOGIC;
+           write_index  : in index_t;
+           read_index   : in index_t;
+           input        : in coefficient_t; 
+           output       : out coefficient_t);
+end component;
 
-signal poly_add_output          : port_t                        := (others => (others => '0'));
-signal poly_mult_output         : port_t                        := (others => (others => '0'));
-signal poly_negate_output       : port_t                        := (others => (others => '0'));
-signal poly_scalar_mult_output  : port_t                        := (others => (others => '0'));
-signal poly_decoded_output      : port_t                        := (others => (others => '0'));
+component rlwe_mode_buffer is
+    Port ( clk          : in STD_LOGIC;
+           write        : in STD_LOGIC;
+           input        : in std_logic_vector(2 downto 0); 
+           output       : out std_logic_vector(2 downto 0));
+end component;
 
-signal poly_0_buffer            : port_t                        := (others => (others => '0'));
-signal poly_1_buffer            : port_t                        := (others => (others => '0'));
-signal mode_buffer              : std_logic_vector(2 downto 0)  := (others => '0');
-signal output_buffer            : port_t                        := (others => (others => '0'));
+component poly_0_0_reg is
+    Port ( clk          : in STD_LOGIC;
+           write        : in STD_LOGIC; 
+           index        : in index_t;
+           input        : in coefficient_t; 
+           output       : out coefficient_t);
+end component;
+
+signal poly_mult_valid              : std_logic                     := '0';
+signal poly_mult_reset              : std_logic                     := '0';
+signal poly_mult_start              : std_logic                     := '0';
+
+signal poly_add_output              : coefficient_t                 := (others => '0');
+signal poly_mult_output             : coefficient_t                 := (others => '0');
+signal poly_negate_output           : coefficient_t                 := (others => '0');
+signal poly_scalar_mult_output      : coefficient_t                 := (others => '0');
+signal poly_decoded_output          : coefficient_t                 := (others => '0');
+
+signal poly_0_buffer                : coefficient_t                 := (others => '0');
+signal poly_1_buffer                : coefficient_t                 := (others => '0');
+signal mode_buffer                  : std_logic_vector(2 downto 0)  := (others => '0');
+signal output_buffer_input          : coefficient_t                 := (others => '0');
+
+signal poly_0_buffer_read_index     : index_t                       := (others => '0');
+signal poly_1_buffer_read_index     : index_t                       := (others => '0');
+
+signal poly_mult_read_index         : index_t                       := (others => '0');
+signal poly_mult_write_index        : index_t                       := (others => '0');
+signal poly_mult_write              : std_logic                     := '0';
+
+signal output_buffer_write          : std_logic                     := '0';
+signal output_buffer_write_index    : index_t                       := (others => '0');
+
+signal mode_buffer_write            : std_logic                     := '0';
+
+signal scalar_buffer                : coefficient_t                 := (others => '0');
 
 begin
-
-    control_unit: rlwe_core_control_unit
+        
+    poly_0_buffer_component : buff
     port map (
-        clk             => clk,
-        mode            => mode_buffer,
-        start           => start,
-        reset           => reset,
-        poly_mult_valid => poly_mult_valid,
-        valid           => valid,
-        poly_mult_reset => poly_mult_reset,
-        poly_mult_start => poly_mult_start,
-        output_sel      => output_sel
+        clk         => clk,
+        write       => write,
+        write_index => write_index,
+        read_index  => poly_0_buffer_read_index,
+        input       => poly_0,
+        output      => poly_0_buffer
     );
-
-    multipler: poly_mult
+    
+    poly_1_buffer_component : buff
+    port map (
+        clk         => clk,
+        write       => write,
+        write_index => write_index,
+        read_index  => poly_1_buffer_read_index,
+        input       => poly_1,
+        output      => poly_1_buffer
+    );
+    
+    rlwe_mode_buffer_component : rlwe_mode_buffer
+    port map (
+        clk         => clk,
+        write       => mode_buffer_write,
+        input       => mode,
+        output      => mode_buffer
+    );
+    
+    scalar_buffer_component : poly_0_0_reg
     port map (
         clk     => clk,
-        reset   => reset,
-        poly_0  => poly_0_buffer,
-        poly_1  => poly_1_buffer,
-        start   => poly_mult_start,
-        output  => poly_mult_output,
-        valid   => poly_mult_valid
+        write   => write,
+        input   => poly_0,
+        index   => write_index,
+        output  => scalar_buffer
+    );
+    
+    control_unit: rlwe_core_control_unit
+    port map (
+        clk                         => clk, 
+        mode_buffer                 => mode_buffer, 
+        start                       => start, 
+        reset                       => reset, 
+        poly_mult_valid             => poly_mult_valid, 
+        mode_buffer_write           => mode_buffer_write, 
+        valid                       => valid, 
+        poly_mult_reset             => poly_mult_reset, 
+        poly_mult_start             => poly_mult_start, 
+        poly_0_buffer_read_index    => poly_0_buffer_read_index, 
+        poly_1_buffer_read_index    => poly_1_buffer_read_index, 
+        poly_mult_read_index        => poly_mult_read_index, 
+        poly_mult_write_index       => poly_mult_write_index, 
+        output_buffer_write_index   => output_buffer_write_index, 
+        output_buffer_write         => output_buffer_write, 
+        poly_mult_write             => poly_mult_write
     );
     
     adder: poly_add
@@ -150,6 +232,20 @@ begin
         poly_0  => poly_0_buffer,
         poly_1  => poly_1_buffer,
         output  => poly_add_output
+    );
+
+    multipler: poly_mult
+    port map (
+        clk         => clk,
+        reset       => reset,
+        poly_0      => poly_0_buffer,
+        poly_1      => poly_1_buffer,
+        read_index  => poly_mult_read_index,
+        write_index => poly_mult_write_index,
+        write       => poly_mult_write,
+        start       => poly_mult_start,
+        output      => poly_mult_output,
+        valid       => poly_mult_valid
     );
     
     negate: poly_negate
@@ -162,7 +258,7 @@ begin
     scalar_mult: poly_scalar_mult
     port map (
         clk     => clk,
-        scalar  => poly_0_buffer(0),
+        scalar  => scalar_buffer,
         poly    => poly_1_buffer,
         output  => poly_scalar_mult_output
     );
@@ -173,51 +269,30 @@ begin
         poly_0  => poly_1_buffer,
         output  => poly_decoded_output
     );
-        
-    input_buffer : process(clk)
-    begin
-        if rising_edge(clk) then
-            if write = '1' then
-                poly_0_buffer(to_integer(write_index))  <= poly_0;
-                poly_1_buffer(to_integer(write_index))  <= poly_1;
-            end if;
-        end if;
-    end process;
     
-    mode_buffer_write : process(clk)
-    begin
-        if rising_edge(clk) then
-            if start = '1' then
-                mode_buffer                 <= mode;
-            end if;
-        end if;
-    end process;
-    
-    output_buffer_process : process(clk)
-    begin
-        if rising_edge(clk) then
-            if read_index < POLYNOMIAL_LENGTH then
-                output <= output_buffer(to_integer(read_index));
-            else
-                output <= output_buffer(POLYNOMIAL_LENGTH - 1);
-            end if;
-        end if;
-    end process;
+    output_buffer_component : buff
+    port map (
+        clk         => clk,
+        write       => output_buffer_write,
+        write_index => output_buffer_write_index,
+        read_index  => read_index,
+        input       => output_buffer_input,
+        output      => output
         
-    output_mux : process(clk, output_sel, poly_mult_output, poly_add_output, poly_negate_output, poly_scalar_mult_output, poly_decoded_output)
+    );
+        
+    output_mux : process(mode_buffer, poly_mult_output, poly_add_output, poly_negate_output, poly_scalar_mult_output, poly_decoded_output)
     begin
-        if rising_edge(clk) then
-            if output_sel = "000" then
-                output_buffer <= poly_add_output;
-            elsif output_sel = "001" then
-                output_buffer <= poly_mult_output;
-            elsif output_sel = "010" then
-                output_buffer <= poly_negate_output;
-            elsif output_sel = "011" then
-                output_buffer <= poly_scalar_mult_output;
-            else 
-                output_buffer <= poly_decoded_output;
-            end if;
+        if mode_buffer = "000" then
+            output_buffer_input <= poly_add_output;
+        elsif mode_buffer = "001" then
+            output_buffer_input <= poly_mult_output;
+        elsif mode_buffer = "010" then
+            output_buffer_input <= poly_negate_output;
+        elsif mode_buffer = "011" then
+            output_buffer_input <= poly_scalar_mult_output;
+        else 
+            output_buffer_input <= poly_decoded_output;
         end if;
     end process;
 

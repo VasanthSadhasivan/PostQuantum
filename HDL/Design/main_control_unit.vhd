@@ -499,9 +499,9 @@ begin
         case op_2_state is
             when random_idle =>
                 uniform_gen             <= '0';
-                uniform_reset           <= '1';
+                uniform_reset           <= '0';
                 gaussian_gen            <= '0';
-                gaussian_reset          <= '1';
+                gaussian_reset          <= '0';
                 reg_file_sel_1_in_0     <= "0000";
                 reg_file_in_1_sel       <= '0';
                 reg_file_write_1        <= '0';
@@ -515,6 +515,17 @@ begin
                 reg_file_in_1_sel       <= '0';
                 reg_file_write_1        <= '0';
                 in_random_reg           <= '0';
+                
+                if inst_is_gaussian = '1' then
+                    gaussian_gen    <= '1';
+                    uniform_gen     <= '0';
+                elsif inst_is_uniform = '1' then
+                    gaussian_gen    <= '0';
+                    uniform_gen     <= '1';
+                else
+                    gaussian_gen    <= '1';
+                    uniform_gen     <= '0';
+                end if;
             when random_read =>
                 uniform_gen             <= '0';
                 uniform_reset           <= '0';

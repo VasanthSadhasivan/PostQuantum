@@ -7,10 +7,10 @@ use work.my_types.all;
 use IEEE.STD_LOGIC_1164.ALL;
 use IEEE.NUMERIC_STD.ALL;
 
-entity rlwe_v3_test is
-end rlwe_v3_test;
+entity rlwe_v4_test is
+end rlwe_v4_test;
 
-architecture Behavioral of rlwe_v3_test is
+architecture Behavioral of rlwe_v4_test is
 
     component rlwe_main is
         Port (clk                       : in std_logic;
@@ -25,7 +25,7 @@ architecture Behavioral of rlwe_v3_test is
               valid                     : out std_logic);
     end component;
     
-    signal DONTCHECK                : unsigned(BIT_WIDTH-1 downto 0)    := x"1111111111111111";
+    signal DONTCHECK                : unsigned(BIT_WIDTH-1 downto 0)    := "0100010001000100010001";
     signal DONTCHECKINT             : index_t                           := (others => '0');
   
 	signal CLK                      : std_logic                         := '0';
@@ -35,7 +35,7 @@ architecture Behavioral of rlwe_v3_test is
     signal input_buffer_write       : std_logic                         := '0';
     signal input_buffer_write_index : index_t                           := (others => '0');
     signal input                    : coefficient_t                     := (others => '0');
-    signal output                   : coefficient_t                     := (others => '0');
+    signal output_signal                   : coefficient_t                     := (others => '0');
     signal output_buffer_read_index : index_t                           := (others => '0');
     signal valid                    : std_logic                         := '0';
     
@@ -55,7 +55,7 @@ architecture Behavioral of rlwe_v3_test is
             input_buffer_write        => input_buffer_write,
             input_buffer_write_index  => input_buffer_write_index,
             input                     => input,
-            output                    => output,
+            output                    => output_signal,
             output_buffer_read_index  => output_buffer_read_index,
             valid                     => valid
         );
@@ -73,12 +73,12 @@ architecture Behavioral of rlwe_v3_test is
             variable input_line_data    : line;
             variable input_line_inst    : line;
             variable output_line        : line;
-            file input_file_data        : TEXT open READ_MODE is "rlwe_v2_decryption_input.txt";
-            file input_file_inst        : TEXT open READ_MODE is "rlwe_v2_decryption_inst.txt";
-            file output_file            : TEXT open READ_MODE is "rlwe_v2_decryption_output.txt";
-            variable input_vector_data  : unsigned(BIT_WIDTH-1 downto 0);
+            file input_file_data        : TEXT open READ_MODE is "rlwe_v4_keyinit_input.txt";
+            file input_file_inst        : TEXT open READ_MODE is "rlwe_v4_keyinit_inst.txt";
+            file output_file            : TEXT open READ_MODE is "rlwe_v4_keyinit_output.txt";
+            variable input_vector_data  : unsigned(64-1 downto 0);
             variable input_vector_inst  : instruction_t;
-            variable output_vector_exp  : unsigned(BIT_WIDTH-1 downto 0);
+            variable output_vector_exp  : unsigned(64-1 downto 0);
             variable counter            : integer;
         begin
             counter := 1;
@@ -97,8 +97,8 @@ architecture Behavioral of rlwe_v3_test is
                 input_data_loop: for i in 0 to to_integer(to_unsigned(POLYNOMIAL_LENGTH, BIT_WIDTH)-1) loop
                     hread(input_line_data, input_vector_data);
                     hread(output_line, output_vector_exp);
-                    output_expected(i)  <= output_vector_exp;
-                    input_expected(i)   <= input_vector_data;
+                    output_expected(i)  <= output_vector_exp(BIT_WIDTH-1 downto 0);
+                    input_expected(i)   <= input_vector_data(BIT_WIDTH-1 downto 0);
                 end loop;
                 
 
@@ -126,7 +126,7 @@ architecture Behavioral of rlwe_v3_test is
                     output_buffer_read_index    <= to_unsigned(i, log2(POLYNOMIAL_LENGTH)+1);
                     wait for CLK_period;
                     wait for CLK_period;
-                    output_retrieved(i)         <= output;
+                    output_retrieved(i)         <= output_signal;
                 end loop;
                 
                 wait for CLK_period;
@@ -136,8 +136,16 @@ architecture Behavioral of rlwe_v3_test is
                     report "Test " & integer'image(counter) & " Output Matches";
                 else
                     report "Test " & integer'image(counter) & " Output Incorrect";
-                    report "1st Output Expected: " & to_hstring(output_expected(0));
-                    report "1st Output Actual: " & to_hstring(output_retrieved(0));
+                    
+                    report "Expected:";
+                    compare_output1: for i in 0 to to_integer(to_unsigned(POLYNOMIAL_LENGTH, BIT_WIDTH)-1) loop
+                        write(output,to_hstring(output_expected(i)) & " ");
+                    end loop;
+                    report "";
+                    report "Retrieved:";
+                    compare_output2: for i in 0 to to_integer(to_unsigned(POLYNOMIAL_LENGTH, BIT_WIDTH)-1) loop
+                        write(output,to_hstring(output_retrieved(i)) & " ");
+                    end loop;
                 end if;
                 
                 wait for CLK_period;

@@ -32,7 +32,7 @@ def transform(invec, root, mod):
     raise ValueError()
   if not (1 <= root < mod):
     raise ValueError()
-  
+
   outvec = []
   for i in range(len(invec)):
     temp = 0
@@ -59,13 +59,13 @@ def transform_radix_2(vector, root, mod):
   levels = n.bit_length() - 1
   if 1 << levels != n:
     raise ValueError("Length is not a power of 2")
-  
+
   powtable = []
   temp = 1
   for i in range(n // 2):
     powtable.append(temp)
     temp = temp * root % mod
-  
+
   def reverse(x, bits):
     y = 0
     for i in range(bits):
@@ -76,7 +76,7 @@ def transform_radix_2(vector, root, mod):
     j = reverse(i, levels)
     if j > i:
       vector[i], vector[j] = vector[j], vector[i]
-  
+
   size = 2
   while size <= n:
     halfsize = size // 2
@@ -313,3 +313,11 @@ def mymod(poly, q):
     poly.c[i] = poly.c[i] % q
 
   return poly
+
+def lfsr(seed):
+  tap_1_index = 2
+  tap_2_index = 19
+
+  tap_1_value = (seed >> tap_1_index) & 1
+  tap_2_value = (seed >> tap_2_index) & 1
+  return (((~(tap_1_value ^ tap_2_value)) & 1) << 19) + (seed >> 1)

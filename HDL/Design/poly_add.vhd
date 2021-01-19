@@ -35,35 +35,34 @@ use work.my_types.all;
 
 entity poly_add is
     Port (clk     : in std_logic;
-          poly_0   : in port_t;
-          poly_1   : in port_t;
-          output  : out port_t);
+          poly_0   : in coefficient_t;
+          poly_1   : in coefficient_t;
+          output  : out coefficient_t);
 end poly_add;
 
 architecture Behavioral of poly_add is
 
 component modular_reduction_q is
-    Port ( input : in unsigned (BIT_WIDTH-1 downto 0);
-           output : out unsigned (BIT_WIDTH-1  downto 0));
+    Port ( input : in double_coefficient_t;
+           output : out coefficient_t);
 end component;
 
-signal output_double : port_t;
-
+signal output_double    : double_coefficient_t;
+signal zero_pad         : coefficient_t := (others => '0');
 begin
+    zero_pad <= (others => '0');
 
-    main: for i in 0 to to_integer(to_unsigned(POLYNOMIAL_LENGTH, BIT_WIDTH) - 1) generate
-        process(clk)
-        begin
-            if rising_edge(clk) then
-                output_double(i) <= poly_0(i) + poly_1(i);
-            end if;
-		end process;
-		
-		modulus: modular_reduction_q 
-        port map (
-            input => output_double(i)(BIT_WIDTH-1 downto 0),
-            output => output(i)
-        );
-    end generate main;
+    main : process(clk)
+    begin
+        if rising_edge(clk) then
+            output_double <= zero_pad & (poly_0 + poly_1);
+        end if;
+    end process;
+    
+	modulus: modular_reduction_q 
+    port map (
+        input => output_double,
+        output => output
+    );
 
 end Behavioral;
