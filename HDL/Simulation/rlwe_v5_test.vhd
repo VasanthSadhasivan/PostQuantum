@@ -7,10 +7,10 @@ use work.my_types.all;
 use IEEE.STD_LOGIC_1164.ALL;
 use IEEE.NUMERIC_STD.ALL;
 
-entity rlwe_v4_test is
-end rlwe_v4_test;
+entity rlwe_v5_test is
+end rlwe_v5_test;
 
-architecture Behavioral of rlwe_v4_test is
+architecture Behavioral of rlwe_v5_test is
 
     component rlwe_main is
         Port (clk                       : in std_logic;
@@ -43,7 +43,7 @@ architecture Behavioral of rlwe_v4_test is
     signal output_retrieved         : port_t                            := (others => (others => '0'));
     signal output_expected          : port_t                            := (others => (others => '0'));
     
-	constant CLK_period             : time                              := 10 ns;
+	constant CLK_period             : time                              := 20 ns;
 
   begin
   
@@ -73,9 +73,9 @@ architecture Behavioral of rlwe_v4_test is
             variable input_line_data    : line;
             variable input_line_inst    : line;
             variable output_line        : line;
-            file input_file_data        : TEXT open READ_MODE is "rlwe_v4_keyinit_input.txt";
-            file input_file_inst        : TEXT open READ_MODE is "rlwe_v4_keyinit_inst.txt";
-            file output_file            : TEXT open READ_MODE is "rlwe_v4_keyinit_output.txt";
+            file input_file_data        : TEXT open READ_MODE is "rlwe_v5_keyinit_input.txt";
+            file input_file_inst        : TEXT open READ_MODE is "rlwe_v5_keyinit_inst.txt";
+            file output_file            : TEXT open READ_MODE is "rlwe_v5_keyinit_output.txt";
             variable input_vector_data  : unsigned(64-1 downto 0);
             variable input_vector_inst  : instruction_t;
             variable output_vector_exp  : unsigned(64-1 downto 0);
@@ -122,7 +122,6 @@ architecture Behavioral of rlwe_v4_test is
                 wait on valid until valid = '1';
                 wait on valid until valid = '0';
                 read_output_data_loop: for i in 0 to to_integer(to_unsigned(POLYNOMIAL_LENGTH, BIT_WIDTH)-1) loop
-                output_buffer_read_index    <= to_unsigned(i, log2(POLYNOMIAL_LENGTH)+1);
                     output_buffer_read_index    <= to_unsigned(i, log2(POLYNOMIAL_LENGTH)+1);
                     wait for CLK_period;
                     wait for CLK_period;

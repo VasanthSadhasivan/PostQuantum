@@ -3,7 +3,7 @@ import numpy
 import sys
 
 if len(sys.argv) != 2:
-    print("Usage: python3 sim_poly_mult_gen.py input/output")
+    print("Usage: python3 sim_rlwe_core_gen.py input/output")
     exit()
 
 n = 256
@@ -14,15 +14,16 @@ root = find_primitive_root(n, mod - 1, mod)
 
 polynomial_in_length = 254
 
-in_data = [i for i in range(polynomial_in_length)] + (n-polynomial_in_length)*[0]
+in_data = [i for i in range(polynomial_in_length)] + (n-polynomial_in_length)*[1]
 
-ntt_data = transform(in_data, root, mod)
+ntt_data = inverse_transform(in_data[::-1], root, mod)
 
 
 if sys.argv[1] == 'input':
     for i in range(n):
         print(str('{:x}'.format(in_data[i])).zfill(16), end=' ')
+        print(str('{:x}'.format(in_data[i])).zfill(16), end=' ')
 
 else:
     for i in range(n):
-        print(str('{:x}'.format(ntt_data[i])).zfill(16), end=' ')
+        print(str('{:x}'.format(ntt_data[::-1][i])).zfill(16), end=' ')

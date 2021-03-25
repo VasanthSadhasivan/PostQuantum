@@ -130,13 +130,13 @@ begin
     
     helper_signal_driver : process(op_1, op_2)
     begin
-        if op_1 /= "0000" and op_1 /= "1000" then
+        if op_1 /= "0000" and op_1 /= "1010" then
             inst_is_arith <= '1';
         else
             inst_is_arith <= '0';
         end if;
         
-        if op_1 = "1000" then
+        if op_1 = "1010" then
             inst_is_storage <= '1';
         else
             inst_is_storage <= '0';
@@ -419,13 +419,17 @@ begin
                  if op_1 = "0001" or op_1 = "0010" then
                     rlwe_core_mode  <= "000";
                 elsif op_1 = "0011" then
-                    rlwe_core_mode  <= "010";
-                elsif op_1 = "0100" or op_1 = "0101" then
                     rlwe_core_mode  <= "001";
+                elsif op_1 = "0100" or op_1 = "0101" then
+                    rlwe_core_mode  <= "010";
                 elsif op_1 = "0110" then
                     rlwe_core_mode  <= "011";
                 elsif op_1 = "0111" then
                     rlwe_core_mode  <= "100";
+                elsif op_1 = "1000" then
+                    rlwe_core_mode  <= "101";
+                elsif op_1 = "1001" then
+                    rlwe_core_mode  <= "110";
                 else
                     rlwe_core_mode  <= "000";
                 end if;

@@ -32,14 +32,14 @@ use work.my_types.all;
 --library UNISIM;
 --use UNISIM.VComponents.all;
 
-entity poly_scalar_mult is
+entity pointwise_mult is
     Port ( clk : in STD_LOGIC;
-           scalar : in coefficient_t;
-           poly : in coefficient_t;
+           poly_0 : in coefficient_t;
+           poly_1 : in coefficient_t;
            output : out coefficient_t);
-end poly_scalar_mult;
+end pointwise_mult;
 
-architecture Behavioral of poly_scalar_mult is
+architecture Behavioral of pointwise_mult is
 
 component modular_reduction_q is
     Port ( input : in double_coefficient_t;
@@ -52,7 +52,7 @@ begin
     process(clk)
     begin
         if rising_edge(clk) then
-            output_double <= poly * scalar;
+            output_double <= poly_0 * poly_1;
         end if;
     end process;
 
