@@ -73,9 +73,9 @@ architecture Behavioral of rlwe_v5_test is
             variable input_line_data    : line;
             variable input_line_inst    : line;
             variable output_line        : line;
-            file input_file_data        : TEXT open READ_MODE is "rlwe_v5_keyinit_input.txt";
-            file input_file_inst        : TEXT open READ_MODE is "rlwe_v5_keyinit_inst.txt";
-            file output_file            : TEXT open READ_MODE is "rlwe_v5_keyinit_output.txt";
+            file input_file_data        : TEXT open READ_MODE is "rlwe_v5_decryption_input.txt";
+            file input_file_inst        : TEXT open READ_MODE is "rlwe_v5_decryption_inst.txt";
+            file output_file            : TEXT open READ_MODE is "rlwe_v5_decryption_output.txt";
             variable input_vector_data  : unsigned(64-1 downto 0);
             variable input_vector_inst  : instruction_t;
             variable output_vector_exp  : unsigned(64-1 downto 0);

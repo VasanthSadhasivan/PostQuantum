@@ -72,6 +72,11 @@ component rlwe_core_control_unit is
           intt_start                : out std_logic;
           intt_index                : out index_t := (others => '0');
           intt_valid                : in std_logic;
+          polyreduce_start          : out std_logic;
+          polyreduce_write          : out std_logic;
+          polyreduce_reset          : out std_logic;         
+          polyreduce_index          : out index_t := (others => '0');       
+          polyreduce_done           : in std_logic;
           rom_output_mux_sel        : out std_logic_vector(1 downto 0) := (others => '0');
           phi_rom_index             : out index_t := (others => '0');
           iphi_rom_index            : out index_t := (others => '0');
@@ -156,6 +161,20 @@ component ROM_phi is
         );
 end component;
 
+
+component polyreduce is
+    Port ( clk : in STD_LOGIC;
+           poly_1 : in coefficient_t;
+           poly_2 : in coefficient_t;
+           write_index : in index_t;
+           write : in STD_LOGIC;
+           start : in STD_LOGIC;
+           reset : in STD_LOGIC;
+           read_index : in index_t;
+           output : out coefficient_t;
+           done : out STD_LOGIC);
+end component;
+
 signal poly_add_output              : coefficient_t                 := (others => '0');
 signal poly_negate_output           : coefficient_t                 := (others => '0');
 signal poly_pointwise_mult_output   : coefficient_t                 := (others => '0');
@@ -197,6 +216,15 @@ signal output_buffer_write          : std_logic                     := '0';
 signal output_buffer_write_index    : index_t                       := (others => '0');
 
 signal mode_buffer_write            : std_logic                     := '0';
+
+
+signal polyreduce_index     : index_t := (others => '0');
+signal polyreduce_write     : std_logic := '0';
+signal polyreduce_start     : std_logic := '0';
+signal polyreduce_reset     : std_logic := '0';
+signal polyreduce_output    : coefficient_t := (others => '0');
+signal polyreduce_done      : std_logic := '0';
+
 
 begin
         
@@ -246,6 +274,11 @@ begin
         intt_start                => poly_intt_start ,
         intt_index                => poly_intt_index ,
         intt_valid                => poly_intt_valid ,
+        polyreduce_start          => polyreduce_start ,
+        polyreduce_write          => polyreduce_write ,
+        polyreduce_reset          => polyreduce_reset ,
+        polyreduce_index          => polyreduce_index ,
+        polyreduce_done           => polyreduce_done ,
         rom_output_mux_sel        => rom_output_mux_sel       ,
         phi_rom_index             => phi_rom_index            ,
         iphi_rom_index            => iphi_rom_index           ,
@@ -318,6 +351,20 @@ begin
         valid   => poly_intt_valid
     );
     
+    reduction: polyreduce
+    port map (
+        clk         => clk,
+        poly_1      => poly_0_buffer,
+        poly_2      => poly_1_buffer,
+        write_index => polyreduce_index,
+        write       => polyreduce_write,
+        start       => polyreduce_start,
+        reset       => polyreduce_reset,
+        read_index  => polyreduce_index,
+        output      => polyreduce_output,
+        done        => polyreduce_done
+    );
+    
     output_buffer_component : buff
     port map (
         clk         => clk,
@@ -354,6 +401,8 @@ begin
             output_buffer_input <= poly_ntt_output;
         elsif output_mux_sel = "100" then
             output_buffer_input <= poly_intt_output;
+        elsif output_mux_sel = "101" then
+            output_buffer_input <= polyreduce_output;
         else 
             output_buffer_input <= poly_add_output;
         end if;
@@ -369,6 +418,7 @@ begin
             when "100" => output_mux_sel <= "010";
             when "101" => output_mux_sel <= "011";
             when "110" => output_mux_sel <= "100";
+            when "111" => output_mux_sel <= "101";
             when others=> output_mux_sel <= "000";
         end case;
     end process;

@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy.stats import norm
-
+'''
 x = []
 
 def lfsr(seed):
@@ -41,3 +41,28 @@ plt.xlabel('Data')
 plt.show(block=False)
 plt.pause(6)
 plt.close('all')
+'''
+
+def test_modular_inverse(a, n):
+    state = 'INPUT'
+    b2 = 0
+    b1 = 1
+    b = None
+
+    while state != 'DONE':
+        if state == 'INPUT':
+            state = 'DIVIDE'
+        if state == 'DIVIDE':
+            b = b2-b1*(n//a)
+            if n%a != 1:
+                state = 'REINITIALIZE'
+            else:
+                state = 'DONE'
+        if state == 'REINITIALIZE':
+            n, a = a, n % a
+            b2, b1 = b1, b
+            state = 'DIVIDE'
+
+    return b if b > 0 else n + b
+
+print(test_modular_inverse(1323, 1346))

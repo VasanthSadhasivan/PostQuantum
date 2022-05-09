@@ -1,0 +1,12 @@
+28400 00101000010000000000 store encrypted_message[0] into r1
+28800 00101000100000000000 store encrypted_message[1] into r2
+28C00 00101000110000000000 store sk into r3
+18400 00011000010000000000 mult phi r1
+18C00 00011000110000000000 mult phi r3
+20400 00100000010000000000 ntt r1
+20C00 00100000110000000000 ntt r3
+104C0 00010000010011000000 mult r1 with r3 and put into r1
+24400 00100100010000000000 intt r1
+1C400 00011100010000000000 mult iphi r1
+0C400 00001100010000000000 negate r1 (-1 * encrypted_message[0] * sk) and store into r1
+04480 00000100010010000000 add r1 (-1 * encrypted_message[0] * sk) by r2 (encrypted_message[1]) and store into r1 (encrypted_message[1] - encrypted_message[0] * sk)

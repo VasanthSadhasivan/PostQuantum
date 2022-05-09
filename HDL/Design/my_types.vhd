@@ -14,6 +14,7 @@ package my_types is
     subtype instruction_op_t is unsigned(17 downto 0);
     subtype index_t is unsigned(INDEX_BIT_WIDTH - 1 downto 0);
     subtype coefficient_t is unsigned(BIT_WIDTH-1 downto 0);
+    subtype s_coefficient_t is signed(BIT_WIDTH-1 downto 0);
     subtype double_coefficient_t is unsigned(2*BIT_WIDTH-1 downto 0);
     type port_t is array(POLYNOMIAL_LENGTH downto 0) of coefficient_t;
     type double_port_t is array(POLYNOMIAL_LENGTH-1 downto 0) of unsigned(2*BIT_WIDTH-1 downto 0);

@@ -49,6 +49,11 @@ entity rlwe_core_control_unit is
           intt_start                : out std_logic;
           intt_index                : out index_t := (others => '0');
           intt_valid                : in std_logic;
+          polyreduce_start          : out std_logic;
+          polyreduce_write          : out std_logic;
+          polyreduce_reset          : out std_logic;         
+          polyreduce_index          : out index_t := (others => '0');       
+          polyreduce_done           : in std_logic;       
           rom_output_mux_sel        : out std_logic_vector(1 downto 0) := (others => '0');
           phi_rom_index             : out index_t := (others => '0');
           iphi_rom_index            : out index_t := (others => '0');
@@ -95,6 +100,7 @@ begin
                     poly_1_buffer_read_index <= (others => '0');
                     ntt_index <= to_unsigned(255, INDEX_BIT_WIDTH);
                     intt_index <= to_unsigned(255, INDEX_BIT_WIDTH);
+                    polyreduce_index <= to_unsigned(255, INDEX_BIT_WIDTH);
                     phi_rom_index <= to_unsigned(255, INDEX_BIT_WIDTH);
                     iphi_rom_index <= to_unsigned(255, INDEX_BIT_WIDTH);
                     output_buffer_write_index <= (others => '0');
@@ -133,22 +139,25 @@ begin
                     else
                         ntt_index <= ntt_index - 1;
                         intt_index <= intt_index - 1;
+                        polyreduce_index <= polyreduce_index - 1;
                         state <= transform_process;
                     end if;
                 when transform_start_process =>
                     ntt_index <= to_unsigned(255, INDEX_BIT_WIDTH);
                     intt_index <= to_unsigned(255, INDEX_BIT_WIDTH);
+                    polyreduce_index <= to_unsigned(255, INDEX_BIT_WIDTH);
                     state <= transform_wait_process;
                 when transform_wait_process =>
-                    if (ntt_valid = '1' and mode_buffer="101") or (intt_valid = '1' and mode_buffer="110") then
+                    if (ntt_valid = '1' and mode_buffer="101") or (intt_valid = '1' and mode_buffer="110") or (polyreduce_done = '1' and mode_buffer="111") then
                         state <= transform_output_process;
                     else
                         state <= transform_wait_process;
                     end if;
                 when transform_output_process =>
-                    if ntt_index > 0 and intt_index > 0 then
+                    if ntt_index > 0 and intt_index > 0 and polyreduce_index > 0 then
                         ntt_index <= ntt_index - 1;
                         intt_index <= intt_index - 1;
+                        polyreduce_index <= polyreduce_index - 1;
                     end if;
                     state <= transform_output_store_process;
                 when transform_output_store_process =>
@@ -176,6 +185,9 @@ begin
                 intt_reset          <= '0';
                 intt_write          <= '0';
                 intt_start          <= '0';
+                polyreduce_start    <= '0';
+                polyreduce_write    <= '0';
+                polyreduce_reset    <= '0';
                 valid               <= '0';
                 output_buffer_write <= '0';
             when mode_store =>
@@ -187,6 +199,9 @@ begin
                 intt_reset          <= '0';
                 intt_write          <= '0';
                 intt_start          <= '0';
+                polyreduce_start    <= '0';
+                polyreduce_write    <= '0';
+                polyreduce_reset    <= '0';
                 valid               <= '0';
                 output_buffer_write <= '0';
             when mode_buffer_wait =>
@@ -198,6 +213,9 @@ begin
                 intt_reset          <= '0';
                 intt_write          <= '0';
                 intt_start          <= '0';
+                polyreduce_start    <= '0';
+                polyreduce_write    <= '0';
+                polyreduce_reset    <= '0';
                 valid               <= '0';
                 output_buffer_write <= '0';
             when start_process =>
@@ -209,6 +227,9 @@ begin
                 intt_reset          <= '1';
                 intt_write          <= '0';
                 intt_start          <= '0';
+                polyreduce_start    <= '0';
+                polyreduce_write    <= '0';
+                polyreduce_reset    <= '1';
                 valid               <= '0';
                 output_buffer_write <= '0';
             when non_transform_process =>
@@ -219,6 +240,9 @@ begin
                 intt_reset          <= '0';
                 intt_write          <= '0';
                 intt_start          <= '0';
+                polyreduce_start    <= '0';
+                polyreduce_write    <= '0';
+                polyreduce_reset    <= '0';
                 valid               <= '0';
                 output_buffer_write <= '0';
                 
@@ -239,6 +263,9 @@ begin
                 intt_reset          <= '0';
                 intt_write          <= '0';
                 intt_start          <= '0';
+                polyreduce_start    <= '0';
+                polyreduce_write    <= '0';
+                polyreduce_reset    <= '0';
                 valid               <= '0';
                 output_buffer_write <= '1';
                 
@@ -260,6 +287,9 @@ begin
                 intt_reset          <= '0';
                 intt_write          <= '0';
                 intt_start          <= '0';
+                polyreduce_start    <= '0';
+                polyreduce_write    <= '0';
+                polyreduce_reset    <= '0';
                 valid               <= '1';
                 output_buffer_write <= '0';
             when transform_process =>
@@ -271,6 +301,9 @@ begin
                 intt_reset          <= '0';
                 intt_write          <= '0';
                 intt_start          <= '0';
+                polyreduce_start    <= '0';
+                polyreduce_write    <= '0';
+                polyreduce_reset    <= '0';
                 valid               <= '0';
                 output_buffer_write <= '0';
             when transform_store_input =>
@@ -282,6 +315,9 @@ begin
                 intt_reset          <= '0';
                 intt_write          <= '1';
                 intt_start          <= '0';
+                polyreduce_start    <= '0';
+                polyreduce_write    <= '1';
+                polyreduce_reset    <= '0';
                 valid               <= '0';
                 output_buffer_write <= '0';
             when transform_start_process =>
@@ -291,15 +327,23 @@ begin
                 ntt_write           <= '0';
                 intt_reset          <= '0';
                 intt_write          <= '0';
+                polyreduce_write    <= '0';
+                polyreduce_reset    <= '0';
                 valid               <= '0';
                 output_buffer_write <= '0';
                 
                 if mode_buffer = "110" then 
                     ntt_start           <= '0';
                     intt_start          <= '1';
+                    polyreduce_start    <= '0';
                 elsif mode_buffer = "101" then 
                     ntt_start           <= '1';
                     intt_start          <= '0';
+                    polyreduce_start    <= '0';
+                elsif mode_buffer = "111" then
+                    ntt_start           <= '0';
+                    intt_start          <= '0';
+                    polyreduce_start    <= '1';
                 end if;
             when transform_wait_process =>
                 mode_buffer_write   <= '0';
@@ -310,6 +354,9 @@ begin
                 intt_reset          <= '0';
                 intt_write          <= '0';
                 intt_start          <= '0';
+                polyreduce_start    <= '0';
+                polyreduce_write    <= '0';
+                polyreduce_reset    <= '0';
                 valid               <= '0';
                 output_buffer_write <= '0';
             when transform_output_process =>
@@ -321,6 +368,9 @@ begin
                 intt_reset          <= '0';
                 intt_write          <= '0';
                 intt_start          <= '0';
+                polyreduce_start    <= '0';
+                polyreduce_write    <= '0';
+                polyreduce_reset    <= '0';
                 valid               <= '0';
                 output_buffer_write <= '0';
             when transform_output_store_process =>
@@ -332,6 +382,9 @@ begin
                 intt_reset          <= '0';
                 intt_write          <= '0';
                 intt_start          <= '0';
+                polyreduce_start    <= '0';
+                polyreduce_write    <= '0';
+                polyreduce_reset    <= '0';
                 valid               <= '0';
                 output_buffer_write <= '1';
         end case;
